@@ -462,27 +462,116 @@
     color: var(--bg);
   }
 
-  /* Operator picker */
-  .operator-pick {
+  /* footer operator area now handled by modal */
+
+  /* ── Name picker modal ── */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(4px);
+    z-index: 100;
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
+    padding: 24px;
+    opacity: 1;
+    transition: opacity 0.25s ease;
   }
-  .operator-pick input {
-    background: var(--bg);
-    border: 1px solid var(--rule);
+  .modal-backdrop.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--yellow);
+    max-width: 440px;
+    width: 100%;
+    padding: 36px;
+    position: relative;
+    box-shadow: 0 0 60px rgba(244, 208, 63, 0.12);
+  }
+
+  .modal-glider {
+    height: 32px;
+    width: auto;
+    display: block;
+    margin-bottom: 20px;
+    opacity: 0.9;
+    filter: drop-shadow(0 0 8px rgba(244, 208, 63, 0.2));
+  }
+
+  .modal-title {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 22px;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
     color: var(--ink);
-    padding: 6px 10px;
+    margin: 0 0 4px;
+  }
+
+  .modal-sub {
     font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.15em;
     text-transform: uppercase;
-    width: 120px;
+    color: var(--ink-faint);
+    margin-bottom: 28px;
   }
-  .operator-pick input:focus {
-    outline: none;
+
+  .name-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .name-btn {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    background: var(--surface-2);
+    border: 1px solid var(--rule);
+    color: var(--ink);
+    padding: 14px 16px;
+    cursor: pointer;
+    text-align: left;
+    letter-spacing: 0.02em;
+    transition: all 0.15s ease;
+    position: relative;
+  }
+  .name-btn::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--yellow);
+    transform: scaleY(0);
+    transition: transform 0.15s ease;
+  }
+  .name-btn:hover {
     border-color: var(--yellow);
+    background: rgba(244, 208, 63, 0.06);
+    color: var(--yellow);
+    padding-left: 20px;
   }
+  .name-btn:hover::before { transform: scaleY(1); }
+
+  /* Switch user link in footer */
+  .switch-user {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.15s ease;
+  }
+  .switch-user:hover { color: var(--yellow); }
 
   @media (max-width: 700px) {
     header, main, footer, .progress-wrap, .status-bar { padding-left: 18px; padding-right: 18px; }
@@ -503,6 +592,16 @@
 </style>
 </head>
 <body>
+
+<!-- Name picker modal -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <img src="maris_glider.png" alt="" class="modal-glider" />
+    <div class="modal-title">Who are you?</div>
+    <div class="modal-sub">Select your name to continue</div>
+    <div class="name-grid" id="nameGrid"></div>
+  </div>
+</div>
 
 <div class="sheet">
 
@@ -540,9 +639,10 @@
   </main>
 
   <footer>
-    <div class="operator-pick">
-      <span>YOU:</span>
-      <input id="operatorInput" type="text" maxlength="20" placeholder="name" />
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-faint);">Operator</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink);" id="footerName">—</span>
+      <button class="switch-user" id="switchUserBtn">[ switch ]</button>
     </div>
     <div class="footer-actions">
       <button class="btn" id="refreshBtn">Refresh</button>
@@ -678,9 +778,7 @@
   // ---------- Toggle ----------
   async function toggleTask(taskId) {
     if (!operator.trim()) {
-      $("operatorInput").focus();
-      $("operatorInput").style.borderColor = "var(--yellow)";
-      setTimeout(() => { $("operatorInput").style.borderColor = ""; }, 1500);
+      showModal();
       return;
     }
     const cur = state[taskId] || {};
@@ -741,13 +839,44 @@
     }, 250);
   }
 
-  // ---------- Operator name ----------
-  $("operatorInput").value = operator;
-  $("operatorInput").addEventListener("input", (e) => {
-    operator = e.target.value;
-    localStorage.setItem("maris_operator", operator);
-    $("metaOperator").textContent = operator || "—";
+  // ---------- Name picker modal ----------
+  const TEAM = ["Alvaro", "Bartol", "Hussain", "Ibrahim", "James", "Jasper", "Kevin", "Poojak"];
+
+  const grid = $("nameGrid");
+  TEAM.forEach(name => {
+    const btn = document.createElement("button");
+    btn.className = "name-btn";
+    btn.textContent = name;
+    btn.addEventListener("click", () => selectOperator(name));
+    grid.appendChild(btn);
   });
+
+  function selectOperator(name) {
+    operator = name;
+    localStorage.setItem("maris_operator", name);
+    $("metaOperator").textContent = name;
+    $("footerName").textContent = name;
+    const backdrop = $("modalBackdrop");
+    backdrop.style.opacity = "0";
+    setTimeout(() => backdrop.classList.add("hidden"), 250);
+  }
+
+  function showModal() {
+    const backdrop = $("modalBackdrop");
+    backdrop.classList.remove("hidden");
+    backdrop.style.opacity = "0";
+    requestAnimationFrame(() => { backdrop.style.opacity = "1"; });
+  }
+
+  $("switchUserBtn").addEventListener("click", showModal);
+
+  // Show modal on load if no operator saved
+  if (!operator) {
+    showModal();
+  } else {
+    $("modalBackdrop").classList.add("hidden");
+    $("footerName").textContent = operator;
+  }
 
   // ---------- Buttons ----------
   $("refreshBtn").addEventListener("click", load);
