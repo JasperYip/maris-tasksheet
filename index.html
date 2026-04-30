@@ -20,14 +20,15 @@
     --yellow: #f4d03f;
     --yellow-bright: #ffd91c;
     --yellow-dim: #8a7a1f;
+    --green: #4caf7d;
+    --red: #e05252;
     --grid: rgba(244, 208, 63, 0.04);
   }
 
   * { box-sizing: border-box; }
 
   html, body {
-    margin: 0;
-    padding: 0;
+    margin: 0; padding: 0;
     background: var(--bg);
     color: var(--ink);
     font-family: 'Space Grotesk', system-ui, sans-serif;
@@ -43,14 +44,11 @@
     padding: 32px 16px 80px;
   }
 
-  /* Subtle vignette */
   body::before {
     content: "";
-    position: fixed;
-    inset: 0;
+    position: fixed; inset: 0;
     background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.5) 100%);
-    pointer-events: none;
-    z-index: 0;
+    pointer-events: none; z-index: 0;
   }
 
   .sheet {
@@ -58,11 +56,10 @@
     margin: 0 auto;
     background: var(--surface);
     border: 1px solid var(--rule);
-    position: relative;
-    z-index: 1;
+    position: relative; z-index: 1;
   }
 
-  /* Status banner / connection state */
+  /* ── Status bar ── */
   .status-bar {
     display: flex;
     justify-content: space-between;
@@ -76,310 +73,269 @@
     text-transform: uppercase;
     color: var(--ink-dim);
   }
+  .status-bar .left, .status-bar .right { display: flex; align-items: center; gap: 14px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-faint); transition: all 0.3s ease; }
+  .dot.live { background: var(--yellow-bright); box-shadow: 0 0 8px var(--yellow-bright); }
+  .dot.offline { background: var(--red); }
+  .dot.syncing { background: var(--yellow); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-  .status-bar .left,
-  .status-bar .right {
+  /* ── Crew panel ── */
+  .crew-panel {
+    padding: 14px 36px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--bg);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .crew-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-right: 4px;
+    flex-shrink: 0;
+  }
+  .crew-chip {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 6px;
+    padding: 5px 10px;
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    transition: all 0.2s ease;
+    position: relative;
   }
+  .crew-chip.available { border-color: var(--green); color: var(--ink); }
+  .crew-chip.busy { border-color: var(--red); color: var(--ink); }
+  .crew-chip.me { background: rgba(244,208,63,0.06); border-color: var(--yellow); color: var(--yellow); }
 
-  .dot {
-    width: 7px;
-    height: 7px;
+  .crew-status-dot {
+    width: 6px; height: 6px;
     border-radius: 50%;
     background: var(--ink-faint);
-    transition: all 0.3s ease;
+    flex-shrink: 0;
   }
-  .dot.live {
-    background: var(--yellow-bright);
-    box-shadow: 0 0 8px var(--yellow-bright);
-  }
-  .dot.offline { background: #c0392b; }
-  .dot.syncing {
-    background: var(--yellow);
-    animation: pulse 1s infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
-  }
+  .crew-chip.available .crew-status-dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .crew-chip.busy .crew-status-dot { background: var(--red); box-shadow: 0 0 6px var(--red); animation: pulse 2s infinite; }
+  .crew-chip.me .crew-status-dot { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
 
+  .crew-tasks {
+    font-size: 9px;
+    color: var(--red);
+    letter-spacing: 0.05em;
+    opacity: 0.9;
+  }
+  .crew-chip.me .crew-tasks { color: var(--yellow); }
+
+  /* ── Header ── */
   header {
     padding: 36px 36px 24px;
     border-bottom: 1px solid var(--rule);
     position: relative;
-    background:
-      linear-gradient(180deg, transparent 0%, rgba(244,208,63,0.02) 100%),
-      var(--surface);
+    background: linear-gradient(180deg, transparent 0%, rgba(244,208,63,0.02) 100%), var(--surface);
   }
-
-  /* Subtle corner marks */
   header::before, header::after {
     content: "";
     position: absolute;
-    width: 12px;
-    height: 12px;
+    width: 12px; height: 12px;
     border: 1px solid var(--yellow);
     opacity: 0.5;
   }
   header::before { bottom: 12px; left: 12px; border-right: none; border-top: none; }
-  header::after { bottom: 12px; right: 12px; border-left: none; border-top: none; }
+  header::after  { bottom: 12px; right: 12px; border-left: none; border-top: none; }
 
+  .corner-mark {
+    position: absolute;
+    top: 24px; right: 28px;
+    height: 38px; width: auto;
+    opacity: 0.85;
+    filter: drop-shadow(0 0 12px rgba(244,208,63,0.15));
+    pointer-events: none; z-index: 2;
+  }
   .doc-id {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
+    font-size: 10px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--ink-faint);
   }
   .doc-id span { color: var(--yellow); font-weight: 700; }
 
   h1 {
     font-family: 'Archivo Black', sans-serif;
-    font-size: clamp(38px, 7vw, 68px);
-    line-height: 0.92;
-    margin: 16px 0 4px;
-    letter-spacing: -0.03em;
-    text-transform: uppercase;
-    color: var(--ink);
+    font-size: clamp(38px,7vw,68px);
+    line-height: 0.92; margin: 16px 0 4px;
+    letter-spacing: -0.03em; text-transform: uppercase; color: var(--ink);
   }
-
-  h1 .accent {
-    color: var(--yellow);
-    -webkit-text-stroke: 0;
-  }
+  h1 .accent { color: var(--yellow); }
 
   .tagline {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--ink-dim);
-    margin-top: 8px;
+    font-size: 11px; letter-spacing: 0.15em;
+    text-transform: uppercase; color: var(--ink-dim); margin-top: 8px;
   }
 
-  /* Corner glider mark */
-  .corner-mark {
-    position: absolute;
-    top: 24px;
-    right: 28px;
-    height: 38px;
-    width: auto;
-    opacity: 0.85;
-    filter: drop-shadow(0 0 12px rgba(244, 208, 63, 0.15));
-    pointer-events: none;
-    z-index: 2;
-  }
-
-  .meta-row {
-    display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 16px;
-    margin-top: 22px;
-    padding-top: 16px;
-    border-top: 1px dashed var(--rule);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--ink-dim);
-  }
-  .meta-row b { color: var(--ink); font-weight: 500; }
-
-  /* Stamp */
   .stamp {
     position: absolute;
-    bottom: 90px;
-    right: 36px;
+    bottom: 90px; right: 36px;
     border: 2px solid var(--yellow);
     color: var(--yellow);
     padding: 8px 14px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    font-weight: 700;
+    font-size: 10px; font-weight: 700;
     letter-spacing: 0.22em;
     transform: rotate(-3deg);
-    background: rgba(244, 208, 63, 0.05);
+    background: rgba(244,208,63,0.05);
   }
-  .stamp.complete {
-    border-color: var(--ink);
-    color: var(--ink);
-    background: var(--yellow);
-    border-color: var(--yellow);
-    color: var(--bg);
-  }
+  .stamp.complete { background: var(--yellow); border-color: var(--yellow); color: var(--bg); }
 
-  /* Progress */
+  .meta-row {
+    display: flex; justify-content: space-between; flex-wrap: wrap;
+    gap: 16px; margin-top: 22px; padding-top: 16px;
+    border-top: 1px dashed var(--rule);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--ink-dim);
+  }
+  .meta-row b { color: var(--ink); font-weight: 500; }
+
+  /* ── Progress ── */
   .progress-wrap {
     padding: 22px 36px;
     border-bottom: 1px solid var(--rule);
-    display: flex;
-    align-items: center;
-    gap: 22px;
+    display: flex; align-items: center; gap: 22px;
     background: var(--surface-2);
   }
-
   .progress-track {
-    flex: 1;
-    height: 16px;
+    flex: 1; height: 16px;
     background: var(--bg);
     border: 1px solid var(--rule);
-    position: relative;
-    overflow: hidden;
+    position: relative; overflow: hidden;
   }
-
   .progress-track::before {
     content: "";
-    position: absolute;
-    inset: 0;
-    background-image: repeating-linear-gradient(
-      90deg,
-      transparent 0 23px,
-      var(--rule) 23px 24px
-    );
-    pointer-events: none;
-    z-index: 1;
+    position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(90deg, transparent 0 23px, var(--rule) 23px 24px);
+    pointer-events: none; z-index: 2;
   }
-
+  .progress-fill-active {
+    position: absolute; top: 0; bottom: 0; left: 0;
+    width: 0%;
+    background: repeating-linear-gradient(-45deg, #3a3a35 0 8px, #2a2a25 8px 16px);
+    transition: width 0.5s cubic-bezier(.2,.8,.2,1);
+    z-index: 0;
+  }
   .progress-fill {
-    height: 100%;
+    position: absolute; top: 0; bottom: 0; left: 0;
     width: 0%;
     background: var(--yellow);
-    background-image: repeating-linear-gradient(
-      -45deg,
-      var(--yellow) 0 8px,
-      var(--yellow-bright) 8px 16px
-    );
+    background-image: repeating-linear-gradient(-45deg, var(--yellow) 0 8px, var(--yellow-bright) 8px 16px);
     transition: width 0.5s cubic-bezier(.2,.8,.2,1);
-    box-shadow: 0 0 12px rgba(244, 208, 63, 0.3);
+    box-shadow: 0 0 12px rgba(244,208,63,0.3);
+    z-index: 1;
   }
-
   .progress-label {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    min-width: 110px;
-    text-align: right;
-    color: var(--ink);
+    font-size: 13px; font-weight: 700;
+    letter-spacing: 0.1em; min-width: 110px;
+    text-align: right; color: var(--ink);
   }
-  .progress-label .pct {
-    color: var(--yellow);
-    margin-left: 8px;
-  }
+  .progress-label .pct { color: var(--yellow); margin-left: 8px; }
 
+  /* ── Main / Sections ── */
   main { padding: 8px 36px 36px; position: relative; }
-
-  section {
-    padding: 26px 0 8px;
-    border-bottom: 1px dashed var(--rule);
-  }
+  section { padding: 26px 0 8px; border-bottom: 1px dashed var(--rule); }
   section:last-of-type { border-bottom: none; }
 
   .sec-head {
-    display: flex;
-    align-items: baseline;
-    gap: 16px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
+    display: flex; align-items: baseline;
+    gap: 16px; margin-bottom: 16px; flex-wrap: wrap;
   }
-
   .sec-num {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    font-weight: 700;
-    background: var(--yellow);
-    color: var(--bg);
-    padding: 4px 9px;
-    letter-spacing: 0.12em;
+    font-size: 11px; font-weight: 700;
+    background: var(--yellow); color: var(--bg);
+    padding: 4px 9px; letter-spacing: 0.12em;
   }
-
   .sec-title {
     font-family: 'Archivo Black', sans-serif;
-    font-weight: 900;
-    font-size: 22px;
-    letter-spacing: 0.01em;
-    margin: 0;
-    text-transform: uppercase;
-    color: var(--ink);
+    font-weight: 900; font-size: 22px;
+    letter-spacing: 0.01em; margin: 0;
+    text-transform: uppercase; color: var(--ink);
   }
-
   .sec-time {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: var(--ink-faint);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    margin-left: auto;
-    padding: 4px 8px;
-    border: 1px solid var(--rule);
+    font-size: 10px; color: var(--ink-faint);
+    letter-spacing: 0.12em; text-transform: uppercase;
+    margin-left: auto; padding: 4px 8px; border: 1px solid var(--rule);
   }
 
+  /* ── Tasks ── */
   ul.tasks { list-style: none; padding: 0; margin: 0; }
 
   li.task {
-    display: flex;
-    align-items: flex-start;
-    gap: 16px;
-    padding: 14px 6px;
+    display: flex; align-items: flex-start;
+    gap: 16px; padding: 14px 6px;
     border-top: 1px solid var(--rule);
     cursor: pointer;
     transition: background 0.15s ease, padding-left 0.15s ease;
     position: relative;
+    user-select: none; -webkit-user-select: none;
   }
   li.task:first-child { border-top: none; }
-  li.task:hover {
-    background: rgba(244, 208, 63, 0.04);
-    padding-left: 12px;
-  }
+  li.task:hover { background: rgba(244,208,63,0.04); padding-left: 12px; }
   li.task:hover::before {
     content: ">";
-    position: absolute;
-    left: 0;
-    top: 14px;
+    position: absolute; left: 0; top: 14px;
     color: var(--yellow);
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace; font-weight: 700;
   }
 
+  /* Checkbox */
   .check-box {
-    flex-shrink: 0;
-    width: 22px;
-    height: 22px;
+    flex-shrink: 0; width: 22px; height: 22px;
     border: 1.5px solid var(--ink-dim);
-    background: var(--bg);
-    margin-top: 1px;
-    position: relative;
-    transition: all 0.2s ease;
+    background: var(--bg); margin-top: 1px;
+    position: relative; transition: all 0.2s ease;
   }
   li.task:hover .check-box { border-color: var(--yellow); }
-
   .check-box::after {
     content: "✓";
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--bg);
-    font-size: 16px;
-    font-weight: 700;
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--bg); font-size: 16px; font-weight: 700;
     transform: scale(0);
     transition: transform 0.25s cubic-bezier(.5,1.6,.4,1);
   }
-  li.task.done .check-box {
-    background: var(--yellow);
-    border-color: var(--yellow);
-  }
+  li.task.done .check-box { background: var(--yellow); border-color: var(--yellow); }
   li.task.done .check-box::after { transform: scale(1); }
 
+  /* Active state */
+  li.task.active { background: rgba(244,208,63,0.03); }
+  li.task.active .check-box {
+    border-color: var(--yellow);
+    box-shadow: 0 0 10px rgba(244,208,63,0.4);
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+  li.task.active .check-box::after {
+    content: "…";
+    font-size: 11px; letter-spacing: -2px;
+    color: var(--yellow); transform: scale(1);
+  }
+  @keyframes glow-pulse {
+    0%,100% { box-shadow: 0 0 8px rgba(244,208,63,0.3); }
+    50%      { box-shadow: 0 0 20px rgba(244,208,63,0.7); }
+  }
+
   .task-text {
-    flex: 1;
-    font-size: 16px;
-    line-height: 1.45;
-    color: var(--ink);
+    flex: 1; font-size: 16px; line-height: 1.45; color: var(--ink);
     transition: color 0.2s ease, opacity 0.2s ease;
   }
   li.task.done .task-text {
@@ -389,260 +345,161 @@
     text-decoration-color: var(--yellow);
     opacity: 0.6;
   }
+  li.task.active .task-text { color: var(--yellow); opacity: 0.9; }
 
   .task-meta {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
-    flex-shrink: 0;
-    padding-left: 14px;
+    display: flex; flex-direction: column;
+    align-items: flex-end; gap: 4px;
+    flex-shrink: 0; padding-left: 14px;
     border-left: 1px solid var(--rule);
-    min-width: 110px;
+    min-width: 120px;
   }
-
   .task-tag {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    letter-spacing: 0.12em;
-    color: var(--ink-faint);
-    text-transform: uppercase;
+    font-size: 9px; letter-spacing: 0.12em;
+    color: var(--ink-faint); text-transform: uppercase;
   }
   .task-by {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    letter-spacing: 0.1em;
-    color: var(--yellow-dim);
-    text-transform: uppercase;
+    font-size: 9px; letter-spacing: 0.1em;
+    color: var(--yellow-dim); text-transform: uppercase;
   }
-
-  /* ── Active / working state ── */
-  li.task.active {
-    background: rgba(244, 208, 63, 0.04);
+  /* Multiple workers shown as chips */
+  .worker-chips {
+    display: flex; flex-wrap: wrap;
+    gap: 3px; justify-content: flex-end;
+    margin-top: 2px;
   }
-  li.task.active .check-box {
-    border-color: var(--yellow);
-    background: var(--bg);
-    box-shadow: 0 0 10px rgba(244, 208, 63, 0.35);
-    animation: glow-pulse 2s ease-in-out infinite;
-  }
-  li.task.active .check-box::after {
-    content: "…";
-    font-size: 11px;
-    letter-spacing: -2px;
-    color: var(--yellow);
-    transform: scale(1);
-  }
-  li.task.active .task-text {
-    color: var(--yellow);
-    opacity: 0.9;
-  }
-  li.task.active .task-by-active {
+  .worker-chip {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    letter-spacing: 0.1em;
-    color: var(--yellow);
+    font-size: 8px; letter-spacing: 0.08em;
     text-transform: uppercase;
-    animation: blink 1.8s step-end infinite;
+    color: var(--bg);
+    background: var(--yellow);
+    padding: 2px 5px;
+    animation: blink 2s step-end infinite;
   }
-  @keyframes glow-pulse {
-    0%, 100% { box-shadow: 0 0 8px rgba(244, 208, 63, 0.3); }
-    50%       { box-shadow: 0 0 18px rgba(244, 208, 63, 0.7); }
-  }
-  @keyframes blink {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: 0.3; }
-  }
+  /* Stagger blink so they don't all pulse together */
+  .worker-chip:nth-child(2) { animation-delay: 0.4s; }
+  .worker-chip:nth-child(3) { animation-delay: 0.8s; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.5} }
 
-  /* Progress bar — two layers: done (yellow) + active (grey) */
-  .progress-fill-active {
-    position: absolute;
-    top: 0; bottom: 0;
-    left: 0;
-    width: 0%;
-    background: repeating-linear-gradient(
-      -45deg,
-      #3a3a35 0 8px,
-      #2a2a25 8px 16px
-    );
-    transition: width 0.5s cubic-bezier(.2,.8,.2,1);
-    z-index: 0;
-  }
-  .progress-fill {
-    position: relative;
-    z-index: 1;
-  }
+  /* ── Footer ── */
+  footer {
     padding: 20px 36px;
     border-top: 1px solid var(--rule);
     background: var(--surface-2);
-    display: flex;
-    justify-content: space-between;
+    display: flex; justify-content: space-between;
     align-items: center;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-    flex-wrap: wrap;
-    gap: 14px;
+    font-size: 10px; letter-spacing: 0.15em;
+    text-transform: uppercase; color: var(--ink-faint);
+    flex-wrap: wrap; gap: 14px;
   }
-
   .footer-actions { display: flex; gap: 10px; }
-
   .btn {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    background: transparent;
-    border: 1px solid var(--rule);
-    color: var(--ink-dim);
-    padding: 9px 16px;
-    cursor: pointer;
-    transition: all 0.15s ease;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    background: transparent; border: 1px solid var(--rule);
+    color: var(--ink-dim); padding: 9px 16px;
+    cursor: pointer; transition: all 0.15s ease;
   }
-  .btn:hover {
-    border-color: var(--yellow);
-    color: var(--yellow);
-  }
-  .btn.primary {
-    background: var(--yellow);
-    color: var(--bg);
-    border-color: var(--yellow);
-  }
-  .btn.primary:hover {
-    background: var(--yellow-bright);
-    border-color: var(--yellow-bright);
-    color: var(--bg);
-  }
-
-  /* footer operator area now handled by modal */
-
-  /* ── Name picker modal ── */
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(4px);
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    opacity: 1;
-    transition: opacity 0.25s ease;
-  }
-  .modal-backdrop.hidden {
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  .modal {
-    background: var(--surface);
-    border: 1px solid var(--yellow);
-    max-width: 440px;
-    width: 100%;
-    padding: 36px;
-    position: relative;
-    box-shadow: 0 0 60px rgba(244, 208, 63, 0.12);
-  }
-
-  .modal-glider {
-    height: 32px;
-    width: auto;
-    display: block;
-    margin-bottom: 20px;
-    opacity: 0.9;
-    filter: drop-shadow(0 0 8px rgba(244, 208, 63, 0.2));
-  }
-
-  .modal-title {
-    font-family: 'Archivo Black', sans-serif;
-    font-size: 22px;
-    text-transform: uppercase;
-    letter-spacing: -0.01em;
-    color: var(--ink);
-    margin: 0 0 4px;
-  }
-
-  .modal-sub {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-    margin-bottom: 28px;
-  }
-
-  .name-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 10px;
-  }
-
-  .name-btn {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 15px;
-    font-weight: 600;
-    background: var(--surface-2);
-    border: 1px solid var(--rule);
-    color: var(--ink);
-    padding: 14px 16px;
-    cursor: pointer;
-    text-align: left;
-    letter-spacing: 0.02em;
-    transition: all 0.15s ease;
-    position: relative;
-  }
-  .name-btn::before {
-    content: "";
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: 3px;
-    background: var(--yellow);
-    transform: scaleY(0);
-    transition: transform 0.15s ease;
-  }
-  .name-btn:hover {
-    border-color: var(--yellow);
-    background: rgba(244, 208, 63, 0.06);
-    color: var(--yellow);
-    padding-left: 20px;
-  }
-  .name-btn:hover::before { transform: scaleY(1); }
-
-  /* Switch user link in footer */
+  .btn:hover { border-color: var(--yellow); color: var(--yellow); }
   .switch-user {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0;
+    font-size: 10px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--ink-faint);
+    background: none; border: none; cursor: pointer; padding: 0;
     transition: color 0.15s ease;
   }
   .switch-user:hover { color: var(--yellow); }
 
+  /* ── Hint bar ── */
+  .hint-bar {
+    padding: 8px 36px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--rule);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--ink-faint);
+    display: flex; gap: 24px; flex-wrap: wrap;
+  }
+  .hint-bar span { display: flex; align-items: center; gap: 6px; }
+  .hint-key {
+    border: 1px solid var(--ink-faint);
+    padding: 1px 5px; font-size: 8px;
+    color: var(--ink-dim);
+  }
+
+  /* ── Name picker modal ── */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    opacity: 1; transition: opacity 0.25s ease;
+  }
+  .modal-backdrop.hidden { opacity: 0; pointer-events: none; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--yellow);
+    max-width: 440px; width: 100%;
+    padding: 36px; position: relative;
+    box-shadow: 0 0 60px rgba(244,208,63,0.12);
+  }
+  .modal-glider {
+    height: 32px; width: auto;
+    display: block; margin-bottom: 20px;
+    opacity: 0.9;
+    filter: drop-shadow(0 0 8px rgba(244,208,63,0.2));
+  }
+  .modal-title {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 22px; text-transform: uppercase;
+    letter-spacing: -0.01em; color: var(--ink);
+    margin: 0 0 4px;
+  }
+  .modal-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.15em;
+    text-transform: uppercase; color: var(--ink-faint);
+    margin-bottom: 28px;
+  }
+  .name-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .name-btn {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px; font-weight: 600;
+    background: var(--surface-2);
+    border: 1px solid var(--rule);
+    color: var(--ink); padding: 14px 16px;
+    cursor: pointer; text-align: left;
+    letter-spacing: 0.02em;
+    transition: all 0.15s ease; position: relative;
+  }
+  .name-btn::before {
+    content: "";
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px; background: var(--yellow);
+    transform: scaleY(0); transition: transform 0.15s ease;
+  }
+  .name-btn:hover { border-color: var(--yellow); background: rgba(244,208,63,0.06); color: var(--yellow); padding-left: 20px; }
+  .name-btn:hover::before { transform: scaleY(1); }
+
+  /* ── Mobile ── */
   @media (max-width: 700px) {
-    header, main, footer, .progress-wrap, .status-bar { padding-left: 18px; padding-right: 18px; }
+    header, main, footer, .progress-wrap, .status-bar, .crew-panel, .hint-bar { padding-left: 18px; padding-right: 18px; }
     .stamp { bottom: 70px; right: 18px; font-size: 9px; padding: 6px 10px; }
     .corner-mark { top: 18px; right: 18px; height: 28px; }
-    .task-meta {
-      padding-left: 0;
-      border-left: none;
-      align-items: flex-start;
-      flex-direction: row;
-      width: 100%;
-      gap: 12px;
-      min-width: 0;
-    }
+    .task-meta { padding-left: 0; border-left: none; align-items: flex-start; flex-direction: row; width: 100%; gap: 12px; min-width: 0; }
     li.task { flex-wrap: wrap; }
     .meta-row { flex-direction: column; gap: 6px; }
+    .hint-bar { gap: 12px; }
   }
 </style>
 </head>
@@ -670,9 +527,15 @@
     </div>
   </div>
 
+  <!-- Crew status panel -->
+  <div class="crew-panel" id="crewPanel">
+    <span class="crew-label">Crew</span>
+    <!-- populated by JS -->
+  </div>
+
   <header>
     <img src="maris_glider.png" alt="" class="corner-mark" />
-    <div class="doc-id">DOC <span>// MARIS-TS</span> · REV 02 · <span id="docDate">—</span></div>
+    <div class="doc-id">DOC <span>// MARIS-TS</span> · REV 03 · <span id="docDate">—</span></div>
     <h1>project <span class="accent">maris</span></h1>
     <div class="tagline">Operations · Task Sheet · Live</div>
     <div class="stamp" id="stamp">in progress</div>
@@ -682,6 +545,11 @@
     </div>
   </header>
 
+  <div class="hint-bar">
+    <span><span class="hint-key">CLICK</span> claim / unclaim task</span>
+    <span><span class="hint-key">HOLD</span> or <span class="hint-key">RIGHT CLICK</span> mark done</span>
+  </div>
+
   <div class="progress-wrap">
     <div class="progress-label"><span id="progressCount">0 / 0</span><span class="pct" id="progressPct">0%</span></div>
     <div class="progress-track">
@@ -690,14 +558,12 @@
     </div>
   </div>
 
-  <main id="main">
-    <!-- Sections rendered by JS so persistence works cleanly -->
-  </main>
+  <main id="main"></main>
 
   <footer>
     <div style="display:flex;align-items:center;gap:12px;">
-      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-faint);">Operator</span>
-      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink);" id="footerName">—</span>
+      <span style="color:var(--ink-faint)">Operator</span>
+      <span style="color:var(--ink)" id="footerName">—</span>
       <button class="switch-user" id="switchUserBtn">[ switch ]</button>
     </div>
     <div class="footer-actions">
@@ -711,35 +577,41 @@
   const JSONBIN_BIN_ID = "69f3aef2aaba882197586b6e";
   const JSONBIN_KEY    = "$2a$10$Z8PRjpu01cJL8G6d09tJ3eIFX7LjNW/j1fjAAy3soytHPWMRPRioO";
 
+  const TEAM = ["Alvaro", "Bartol", "Hussain", "Ibrahim", "James", "Jasper", "Kevin", "Poojak"];
+
   const SECTIONS = [
     { id: "01", title: "Skeleton", time: "09:00 — 11:00", tasks: [
-        { id: "t1",  text: "Finish skeleton", tag: "structural" },
-        { id: "t2",  text: "Bond the bigheads onto the skeleton", tag: "adhesive" },
+      { id: "t1",  text: "Finish skeleton", tag: "structural" },
+      { id: "t2",  text: "Bond the bigheads onto the skeleton", tag: "adhesive" },
     ]},
     { id: "02", title: "Skins & Tail", time: "~12:00 onwards", tasks: [
-        { id: "t3",  text: "Continue trimming the skins", tag: "cut" },
-        { id: "t4",  text: "Make cutout for tail in the skin panel", tag: "cut" },
-        { id: "t5",  text: "Begin working on the tail U-section", tag: "fab" },
-        { id: "t6",  text: "Drill the tail and bond the threaded rods into it", tag: "drill · bond" },
-        { id: "t7",  text: "Drill and counterbore the wingtips", tag: "drill" },
+      { id: "t3",  text: "Continue trimming the skins", tag: "cut" },
+      { id: "t4",  text: "Make cutout for tail in the skin panel", tag: "cut" },
+      { id: "t5",  text: "Begin working on the tail U-section", tag: "fab" },
+      { id: "t6",  text: "Drill the tail and bond the threaded rods into it", tag: "drill · bond" },
+      { id: "t7",  text: "Drill and counterbore the wingtips", tag: "drill" },
     ]},
     { id: "03", title: "Mechanical / Hardware", time: "flexible", tasks: [
-        { id: "t8",  text: "Cut buoyancy foams on the bandsaw", tag: "workshop" },
-        { id: "t9",  text: "Drive the VBD motors for a 45° turn, then tighten the grub screws", tag: "vbd" },
-        { id: "t10", text: "Grease the O-ring flanges", tag: "seal" },
-        { id: "t11", text: "Check all wetlink penetrators", tag: "seal · inspect" },
+      { id: "t8",  text: "Cut buoyancy foams on the bandsaw", tag: "workshop" },
+      { id: "t9",  text: "Drive the VBD motors for a 45° turn, then tighten the grub screws", tag: "vbd" },
+      { id: "t10", text: "Grease the O-ring flanges", tag: "seal" },
+      { id: "t11", text: "Check all wetlink penetrators", tag: "seal · inspect" },
     ]},
     { id: "04", title: "Electrical", time: "flexible", tasks: [
-        { id: "t12", text: "Sort out power cables", tag: "wiring" },
-        { id: "t13", text: "Recrimp the yellow ethernet cable", tag: "wiring" },
-        { id: "t14", text: "Test the battery packs", tag: "test" },
+      { id: "t12", text: "Sort out power cables", tag: "wiring" },
+      { id: "t13", text: "Recrimp the yellow ethernet cable", tag: "wiring" },
+      { id: "t14", text: "Test the battery packs", tag: "test" },
     ]},
     { id: "05", title: "Admin", time: "end of day", tasks: [
-        { id: "t15", text: "Email Davide and Giles with a progress update", tag: "comms" },
+      { id: "t15", text: "Email Davide and Giles with a progress update", tag: "comms" },
     ]},
   ];
 
-  // state: { taskId: { done, by, at, active, activeBy } }
+  // Build a lookup: taskId -> section number label
+  const TASK_SEC = {};
+  SECTIONS.forEach(sec => sec.tasks.forEach(t => { TASK_SEC[t.id] = sec.id; }));
+
+  // state: { taskId: { done, by, at, workers: ["Name", ...] } }
   let state = {};
   let operator = localStorage.getItem("maris_operator") || "";
   const $ = id => document.getElementById(id);
@@ -749,10 +621,37 @@
     $("connLabel").textContent = label;
   }
   function fmtTime(ts) {
-    return ts ? new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "— —";
+    return ts ? new Date(ts).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" }) : "— —";
   }
 
-  // ---------- Render ----------
+  // ---------- Crew panel ----------
+  function renderCrew() {
+    const panel = $("crewPanel");
+    panel.innerHTML = `<span class="crew-label">Crew</span>`;
+
+    TEAM.forEach(name => {
+      // Find all tasks this person is currently working on
+      const activeTasks = Object.entries(state)
+        .filter(([, e]) => !e.done && e.workers && e.workers.includes(name))
+        .map(([tid]) => TASK_SEC[tid])
+        .filter(Boolean);
+
+      const isBusy = activeTasks.length > 0;
+      const isMe   = name === operator;
+
+      const chip = document.createElement("div");
+      chip.className = "crew-chip" + (isMe ? " me" : isBusy ? " busy" : " available");
+
+      const taskNums = activeTasks.length
+        ? `<span class="crew-tasks">[${activeTasks.join(",")}]</span>`
+        : "";
+
+      chip.innerHTML = `<span class="crew-status-dot"></span>${name}${taskNums}`;
+      panel.appendChild(chip);
+    });
+  }
+
+  // ---------- Render tasks ----------
   function render() {
     $("main").innerHTML = "";
     let total = 0, done = 0, active = 0;
@@ -772,52 +671,82 @@
       sec.tasks.forEach(task => {
         total++;
         const e = state[task.id] || {};
-        if (e.done) done++;
-        else if (e.active) active++;
-
+        const workers = Array.isArray(e.workers) ? e.workers : [];
         const isDone   = !!e.done;
-        const isActive = !isDone && !!e.active;
+        const isActive = !isDone && workers.length > 0;
+        if (isDone) done++;
+        else if (isActive) active++;
+
         const li = document.createElement("li");
         li.className = "task" + (isDone ? " done" : isActive ? " active" : "");
         li.dataset.id = task.id;
 
-        let byHtml = "";
-        if (isDone && e.by)           byHtml = `<span class="task-by">✓ ${e.by}</span>`;
-        else if (isActive && e.activeBy) byHtml = `<span class="task-by-active">⬤ ${e.activeBy}</span>`;
+        let workerHtml = "";
+        if (isDone && e.by) {
+          workerHtml = `<span class="task-by">✓ ${e.by}</span>`;
+        } else if (isActive) {
+          const chips = workers.map(w =>
+            `<span class="worker-chip">${w}</span>`
+          ).join("");
+          workerHtml = `<div class="worker-chips">${chips}</div>`;
+        }
 
         li.innerHTML = `
           <div class="check-box"></div>
           <div class="task-text">${task.text}</div>
           <div class="task-meta">
             <span class="task-tag">${task.tag}</span>
-            ${byHtml}
+            ${workerHtml}
           </div>`;
 
-        // Left-click = toggle done
+        // Click = toggle working on it
         li.addEventListener("click", () => {
+          if (!ensureOperator()) return;
+          if (isDone) return; // can't unclaim a done task via click
+          toggleWorker(task.id);
+        });
+
+        // Right-click = mark done
+        li.addEventListener("contextmenu", ev => {
+          ev.preventDefault();
           if (!ensureOperator()) return;
           toggleDone(task.id);
         });
-        // Right-click = toggle active (desktop)
-        li.addEventListener("contextmenu", e => {
-          e.preventDefault();
-          if (!ensureOperator()) return;
-          toggleActive(task.id);
-        });
-        // Long-press = toggle active (mobile)
+
+        // Long-hold = mark done (desktop mouse + mobile touch)
         let pressTimer;
-        li.addEventListener("touchstart", () => {
-          pressTimer = setTimeout(() => { if (ensureOperator()) toggleActive(task.id); }, 500);
-        }, { passive: true });
-        li.addEventListener("touchend",  () => clearTimeout(pressTimer));
-        li.addEventListener("touchmove", () => clearTimeout(pressTimer), { passive: true });
+        let longPressFired = false;
+
+        function startPress() {
+          longPressFired = false;
+          pressTimer = setTimeout(() => {
+            longPressFired = true;
+            if (ensureOperator()) toggleDone(task.id);
+          }, 600);
+        }
+        function cancelPress() { clearTimeout(pressTimer); }
+
+        // Desktop mouse hold
+        li.addEventListener("mousedown", e => { if (e.button === 0) startPress(); });
+        li.addEventListener("mouseup",   cancelPress);
+        li.addEventListener("mouseleave", cancelPress);
+
+        // Prevent click firing after a completed long-hold
+        li.addEventListener("click", e => {
+          if (longPressFired) { longPressFired = false; e.stopImmediatePropagation(); }
+        }, true);
+
+        // Mobile touch hold
+        li.addEventListener("touchstart", startPress, { passive: true });
+        li.addEventListener("touchend",   cancelPress);
+        li.addEventListener("touchmove",  cancelPress, { passive: true });
 
         ul.appendChild(li);
       });
       $("main").appendChild(s);
     });
 
-    // Progress — grey layer covers done + active, yellow layer covers done only
+    // Progress bar
     const pct      = total ? (done / total) * 100 : 0;
     const pctCombo = total ? ((done + active) / total) * 100 : 0;
     $("progressFillActive").style.width = pctCombo + "%";
@@ -827,12 +756,14 @@
 
     const stamp = $("stamp");
     if (done === total && total > 0) { stamp.textContent = "complete"; stamp.classList.add("complete"); }
-    else                             { stamp.textContent = "in progress"; stamp.classList.remove("complete"); }
+    else                              { stamp.textContent = "in progress"; stamp.classList.remove("complete"); }
 
     $("metaOperator").textContent = operator || "—";
     $("docDate").textContent = new Date().toLocaleDateString("en-GB", {
       day: "2-digit", month: "short", year: "numeric"
     }).toUpperCase().replace(/ /g, "·");
+
+    renderCrew();
   }
 
   function ensureOperator() {
@@ -840,22 +771,26 @@
     return true;
   }
 
-  async function toggleDone(taskId) {
+  // Toggle yourself on/off the workers list for a task
+  async function toggleWorker(taskId) {
     const e = state[taskId] || {};
-    state[taskId] = e.done
-      ? { done: false }
-      : { done: true, by: operator, at: Date.now(), active: false, activeBy: null };
+    const workers = Array.isArray(e.workers) ? [...e.workers] : [];
+    const idx = workers.indexOf(operator);
+    if (idx === -1) workers.push(operator);
+    else            workers.splice(idx, 1);
+    state[taskId] = { ...e, workers };
     render(); await save();
   }
 
-  async function toggleActive(taskId) {
+  // Toggle done (right-click / long-press)
+  async function toggleDone(taskId) {
     const e = state[taskId] || {};
-    if (e.done) return;
-    // If you already marked it active, cancel it; otherwise claim it
-    if (e.active && e.activeBy === operator) {
-      state[taskId] = { ...e, active: false, activeBy: null };
+    if (e.done) {
+      // Undo done — restore to empty
+      state[taskId] = { done: false, workers: [] };
     } else {
-      state[taskId] = { ...e, active: true, activeBy: operator };
+      // Mark done — record who completed it, clear workers
+      state[taskId] = { done: true, by: operator, at: Date.now(), workers: [] };
     }
     render(); await save();
   }
@@ -891,15 +826,14 @@
         setConn("live", "Live · synced");
         $("lastSync").textContent = "synced " + fmtTime(Date.now());
       } catch(e) { console.error(e); setConn("offline", "Save failed"); }
-    }, 400); // debounce — rapid clicks = 1 request
+    }, 400);
   }
 
-  // ---------- Polling — 60s, only when tab visible ----------
+  // Polling — 60s, pauses when tab hidden, refreshes on focus
   setInterval(() => { if (!document.hidden) load(); }, 60000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
 
   // ---------- Name picker modal ----------
-  const TEAM = ["Alvaro", "Bartol", "Hussain", "Ibrahim", "James", "Jasper", "Kevin", "Poojak"];
   const grid = $("nameGrid");
   TEAM.forEach(name => {
     const btn = document.createElement("button");
@@ -917,6 +851,7 @@
     const b = $("modalBackdrop");
     b.style.opacity = "0";
     setTimeout(() => b.classList.add("hidden"), 250);
+    render(); // re-render so crew panel highlights "me"
   }
 
   function showModal() {
@@ -930,14 +865,12 @@
   if (!operator) { showModal(); }
   else { $("modalBackdrop").classList.add("hidden"); $("footerName").textContent = operator; }
 
-  // ---------- Buttons ----------
   $("refreshBtn").addEventListener("click", load);
   $("resetBtn").addEventListener("click", async () => {
     if (!confirm("Reset all tasks for everyone?")) return;
     state = {}; render(); await save();
   });
 
-  // ---------- Init ----------
   render();
   load();
 </script>
