@@ -416,7 +416,62 @@
     text-transform: uppercase;
   }
 
-  footer {
+  /* ── Active / working state ── */
+  li.task.active {
+    background: rgba(244, 208, 63, 0.04);
+  }
+  li.task.active .check-box {
+    border-color: var(--yellow);
+    background: var(--bg);
+    box-shadow: 0 0 10px rgba(244, 208, 63, 0.35);
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+  li.task.active .check-box::after {
+    content: "…";
+    font-size: 11px;
+    letter-spacing: -2px;
+    color: var(--yellow);
+    transform: scale(1);
+  }
+  li.task.active .task-text {
+    color: var(--yellow);
+    opacity: 0.9;
+  }
+  li.task.active .task-by-active {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: var(--yellow);
+    text-transform: uppercase;
+    animation: blink 1.8s step-end infinite;
+  }
+  @keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(244, 208, 63, 0.3); }
+    50%       { box-shadow: 0 0 18px rgba(244, 208, 63, 0.7); }
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+  }
+
+  /* Progress bar — two layers: done (yellow) + active (grey) */
+  .progress-fill-active {
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 0;
+    width: 0%;
+    background: repeating-linear-gradient(
+      -45deg,
+      #3a3a35 0 8px,
+      #2a2a25 8px 16px
+    );
+    transition: width 0.5s cubic-bezier(.2,.8,.2,1);
+    z-index: 0;
+  }
+  .progress-fill {
+    position: relative;
+    z-index: 1;
+  }
     padding: 20px 36px;
     border-top: 1px solid var(--rule);
     background: var(--surface-2);
@@ -630,6 +685,7 @@
   <div class="progress-wrap">
     <div class="progress-label"><span id="progressCount">0 / 0</span><span class="pct" id="progressPct">0%</span></div>
     <div class="progress-track">
+      <div class="progress-fill-active" id="progressFillActive"></div>
       <div class="progress-fill" id="progressFill"></div>
     </div>
   </div>
@@ -652,71 +708,54 @@
 </div>
 
 <script>
-  /* =====================================================
-     CONFIG  ▸  Edit these two values after JSONBin setup
-     ===================================================== */
   const JSONBIN_BIN_ID = "69f3aef2aaba882197586b6e";
   const JSONBIN_KEY    = "$2a$10$Z8PRjpu01cJL8G6d09tJ3eIFX7LjNW/j1fjAAy3soytHPWMRPRioO";
-  /* ===================================================== */
 
   const SECTIONS = [
-    { id: "01", title: "Skeleton", time: "09:00 — 11:00",
-      tasks: [
+    { id: "01", title: "Skeleton", time: "09:00 — 11:00", tasks: [
         { id: "t1",  text: "Finish skeleton", tag: "structural" },
         { id: "t2",  text: "Bond the bigheads onto the skeleton", tag: "adhesive" },
-      ]},
-    { id: "02", title: "Skins & Tail", time: "~12:00 onwards",
-      tasks: [
+    ]},
+    { id: "02", title: "Skins & Tail", time: "~12:00 onwards", tasks: [
         { id: "t3",  text: "Continue trimming the skins", tag: "cut" },
         { id: "t4",  text: "Make cutout for tail in the skin panel", tag: "cut" },
         { id: "t5",  text: "Begin working on the tail U-section", tag: "fab" },
         { id: "t6",  text: "Drill the tail and bond the threaded rods into it", tag: "drill · bond" },
         { id: "t7",  text: "Drill and counterbore the wingtips", tag: "drill" },
-      ]},
-    { id: "03", title: "Mechanical / Hardware", time: "flexible",
-      tasks: [
+    ]},
+    { id: "03", title: "Mechanical / Hardware", time: "flexible", tasks: [
         { id: "t8",  text: "Cut buoyancy foams on the bandsaw", tag: "workshop" },
         { id: "t9",  text: "Drive the VBD motors for a 45° turn, then tighten the grub screws", tag: "vbd" },
         { id: "t10", text: "Grease the O-ring flanges", tag: "seal" },
         { id: "t11", text: "Check all wetlink penetrators", tag: "seal · inspect" },
-      ]},
-    { id: "04", title: "Electrical", time: "flexible",
-      tasks: [
+    ]},
+    { id: "04", title: "Electrical", time: "flexible", tasks: [
         { id: "t12", text: "Sort out power cables", tag: "wiring" },
         { id: "t13", text: "Recrimp the yellow ethernet cable", tag: "wiring" },
         { id: "t14", text: "Test the battery packs", tag: "test" },
-      ]},
-    { id: "05", title: "Admin", time: "end of day",
-      tasks: [
+    ]},
+    { id: "05", title: "Admin", time: "end of day", tasks: [
         { id: "t15", text: "Email Davide and Giles with a progress update", tag: "comms" },
-      ]},
+    ]},
   ];
 
-  // ---------- State ----------
-  let state = {};   // { taskId: { done: bool, by: "name", at: timestamp } }
+  // state: { taskId: { done, by, at, active, activeBy } }
+  let state = {};
   let operator = localStorage.getItem("maris_operator") || "";
-
-  // ---------- DOM helpers ----------
-  const $ = (id) => document.getElementById(id);
+  const $ = id => document.getElementById(id);
 
   function setConn(status, label) {
-    const dot = $("connDot");
-    dot.className = "dot " + (status || "");
+    $("connDot").className = "dot " + (status || "");
     $("connLabel").textContent = label;
   }
-
   function fmtTime(ts) {
-    if (!ts) return "— —";
-    const d = new Date(ts);
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return ts ? new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "— —";
   }
 
   // ---------- Render ----------
   function render() {
-    const main = $("main");
-    main.innerHTML = "";
-
-    let total = 0, done = 0;
+    $("main").innerHTML = "";
+    let total = 0, done = 0, active = 0;
 
     SECTIONS.forEach(sec => {
       const s = document.createElement("section");
@@ -727,47 +766,68 @@
           <h2 class="sec-title">${sec.title}</h2>
           <span class="sec-time">${sec.time}</span>
         </div>
-        <ul class="tasks"></ul>
-      `;
+        <ul class="tasks"></ul>`;
       const ul = s.querySelector("ul");
 
       sec.tasks.forEach(task => {
         total++;
-        const entry = state[task.id] || {};
-        if (entry.done) done++;
+        const e = state[task.id] || {};
+        if (e.done) done++;
+        else if (e.active) active++;
 
+        const isDone   = !!e.done;
+        const isActive = !isDone && !!e.active;
         const li = document.createElement("li");
-        li.className = "task" + (entry.done ? " done" : "");
+        li.className = "task" + (isDone ? " done" : isActive ? " active" : "");
         li.dataset.id = task.id;
+
+        let byHtml = "";
+        if (isDone && e.by)           byHtml = `<span class="task-by">✓ ${e.by}</span>`;
+        else if (isActive && e.activeBy) byHtml = `<span class="task-by-active">⬤ ${e.activeBy}</span>`;
+
         li.innerHTML = `
           <div class="check-box"></div>
           <div class="task-text">${task.text}</div>
           <div class="task-meta">
             <span class="task-tag">${task.tag}</span>
-            ${entry.by ? `<span class="task-by">✓ ${entry.by}</span>` : ""}
-          </div>
-        `;
-        li.addEventListener("click", () => toggleTask(task.id));
+            ${byHtml}
+          </div>`;
+
+        // Left-click = toggle done
+        li.addEventListener("click", () => {
+          if (!ensureOperator()) return;
+          toggleDone(task.id);
+        });
+        // Right-click = toggle active (desktop)
+        li.addEventListener("contextmenu", e => {
+          e.preventDefault();
+          if (!ensureOperator()) return;
+          toggleActive(task.id);
+        });
+        // Long-press = toggle active (mobile)
+        let pressTimer;
+        li.addEventListener("touchstart", () => {
+          pressTimer = setTimeout(() => { if (ensureOperator()) toggleActive(task.id); }, 500);
+        }, { passive: true });
+        li.addEventListener("touchend",  () => clearTimeout(pressTimer));
+        li.addEventListener("touchmove", () => clearTimeout(pressTimer), { passive: true });
+
         ul.appendChild(li);
       });
-
-      main.appendChild(s);
+      $("main").appendChild(s);
     });
 
-    // Progress
-    const pct = total ? Math.round((done / total) * 100) : 0;
-    $("progressFill").style.width = pct + "%";
+    // Progress — grey layer covers done + active, yellow layer covers done only
+    const pct      = total ? (done / total) * 100 : 0;
+    const pctCombo = total ? ((done + active) / total) * 100 : 0;
+    $("progressFillActive").style.width = pctCombo + "%";
+    $("progressFill").style.width       = pct + "%";
     $("progressCount").textContent = done + " / " + total;
-    $("progressPct").textContent = pct + "%";
+    $("progressPct").textContent   = Math.round(pct) + "%";
 
     const stamp = $("stamp");
-    if (done === total && total > 0) {
-      stamp.textContent = "complete";
-      stamp.classList.add("complete");
-    } else {
-      stamp.textContent = "in progress";
-      stamp.classList.remove("complete");
-    }
+    if (done === total && total > 0) { stamp.textContent = "complete"; stamp.classList.add("complete"); }
+    else                             { stamp.textContent = "in progress"; stamp.classList.remove("complete"); }
 
     $("metaOperator").textContent = operator || "—";
     $("docDate").textContent = new Date().toLocaleDateString("en-GB", {
@@ -775,73 +835,71 @@
     }).toUpperCase().replace(/ /g, "·");
   }
 
-  // ---------- Toggle ----------
-  async function toggleTask(taskId) {
-    if (!operator.trim()) {
-      showModal();
-      return;
-    }
-    const cur = state[taskId] || {};
-    state[taskId] = cur.done
+  function ensureOperator() {
+    if (!operator.trim()) { showModal(); return false; }
+    return true;
+  }
+
+  async function toggleDone(taskId) {
+    const e = state[taskId] || {};
+    state[taskId] = e.done
       ? { done: false }
-      : { done: true, by: operator, at: Date.now() };
-    render();
-    await save();
+      : { done: true, by: operator, at: Date.now(), active: false, activeBy: null };
+    render(); await save();
+  }
+
+  async function toggleActive(taskId) {
+    const e = state[taskId] || {};
+    if (e.done) return;
+    // If you already marked it active, cancel it; otherwise claim it
+    if (e.active && e.activeBy === operator) {
+      state[taskId] = { ...e, active: false, activeBy: null };
+    } else {
+      state[taskId] = { ...e, active: true, activeBy: operator };
+    }
+    render(); await save();
   }
 
   // ---------- Persistence ----------
   const BIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
 
   async function load() {
-    if (JSONBIN_BIN_ID.startsWith("REPLACE")) {
-      setConn("offline", "Not configured");
-      return;
-    }
     setConn("syncing", "Loading");
     try {
-      const r = await fetch(BIN_URL + "/latest", {
-        headers: { "X-Master-Key": JSONBIN_KEY }
-      });
+      const r = await fetch(BIN_URL + "/latest", { headers: { "X-Master-Key": JSONBIN_KEY } });
       if (!r.ok) throw new Error("HTTP " + r.status);
       const data = await r.json();
       state = (data.record && data.record.tasks) || {};
       setConn("live", "Live · synced");
       $("lastSync").textContent = "synced " + fmtTime(Date.now());
       render();
-    } catch (e) {
-      console.error(e);
-      setConn("offline", "Offline");
-    }
+    } catch(e) { console.error(e); setConn("offline", "Offline"); }
   }
 
   let saveTimer = null;
   async function save() {
-    if (JSONBIN_BIN_ID.startsWith("REPLACE")) return;
     setConn("syncing", "Saving");
     clearTimeout(saveTimer);
     saveTimer = setTimeout(async () => {
       try {
         const r = await fetch(BIN_URL, {
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Master-Key": JSONBIN_KEY
-          },
+          headers: { "Content-Type": "application/json", "X-Master-Key": JSONBIN_KEY },
           body: JSON.stringify({ tasks: state, updated: Date.now() })
         });
         if (!r.ok) throw new Error("HTTP " + r.status);
         setConn("live", "Live · synced");
         $("lastSync").textContent = "synced " + fmtTime(Date.now());
-      } catch (e) {
-        console.error(e);
-        setConn("offline", "Save failed");
-      }
-    }, 250);
+      } catch(e) { console.error(e); setConn("offline", "Save failed"); }
+    }, 400); // debounce — rapid clicks = 1 request
   }
+
+  // ---------- Polling — 60s, only when tab visible ----------
+  setInterval(() => { if (!document.hidden) load(); }, 60000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
 
   // ---------- Name picker modal ----------
   const TEAM = ["Alvaro", "Bartol", "Hussain", "Ibrahim", "James", "Jasper", "Kevin", "Poojak"];
-
   const grid = $("nameGrid");
   TEAM.forEach(name => {
     const btn = document.createElement("button");
@@ -856,39 +914,28 @@
     localStorage.setItem("maris_operator", name);
     $("metaOperator").textContent = name;
     $("footerName").textContent = name;
-    const backdrop = $("modalBackdrop");
-    backdrop.style.opacity = "0";
-    setTimeout(() => backdrop.classList.add("hidden"), 250);
+    const b = $("modalBackdrop");
+    b.style.opacity = "0";
+    setTimeout(() => b.classList.add("hidden"), 250);
   }
 
   function showModal() {
-    const backdrop = $("modalBackdrop");
-    backdrop.classList.remove("hidden");
-    backdrop.style.opacity = "0";
-    requestAnimationFrame(() => { backdrop.style.opacity = "1"; });
+    const b = $("modalBackdrop");
+    b.classList.remove("hidden");
+    b.style.opacity = "0";
+    requestAnimationFrame(() => { b.style.opacity = "1"; });
   }
 
   $("switchUserBtn").addEventListener("click", showModal);
-
-  // Show modal on load if no operator saved
-  if (!operator) {
-    showModal();
-  } else {
-    $("modalBackdrop").classList.add("hidden");
-    $("footerName").textContent = operator;
-  }
+  if (!operator) { showModal(); }
+  else { $("modalBackdrop").classList.add("hidden"); $("footerName").textContent = operator; }
 
   // ---------- Buttons ----------
   $("refreshBtn").addEventListener("click", load);
   $("resetBtn").addEventListener("click", async () => {
     if (!confirm("Reset all tasks for everyone?")) return;
-    state = {};
-    render();
-    await save();
+    state = {}; render(); await save();
   });
-
-  // ---------- Auto-refresh every 20s ----------
-  setInterval(load, 20000);
 
   // ---------- Init ----------
   render();
