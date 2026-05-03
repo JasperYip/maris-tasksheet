@@ -10,496 +10,227 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&family=Archivo+Black&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0a0a;
-    --surface: #131311;
-    --surface-2: #1a1a17;
-    --ink: #f5f1e8;
-    --ink-dim: #a8a499;
-    --ink-faint: #5a564d;
-    --rule: #2a2a25;
-    --yellow: #f4d03f;
-    --yellow-bright: #ffd91c;
-    --yellow-dim: #8a7a1f;
-    --green: #4caf7d;
-    --red: #e05252;
-    --grid: rgba(244, 208, 63, 0.04);
+    --bg: #0a0a0a; --surface: #131311; --surface-2: #1a1a17;
+    --ink: #f5f1e8; --ink-dim: #a8a499; --ink-faint: #5a564d;
+    --rule: #2a2a25; --yellow: #f4d03f; --yellow-bright: #ffd91c;
+    --yellow-dim: #8a7a1f; --green: #4caf7d; --red: #e05252;
+    --grid: rgba(244,208,63,0.04);
   }
-
   * { box-sizing: border-box; }
+  html,body { margin:0; padding:0; background:var(--bg); color:var(--ink); font-family:'Space Grotesk',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  body { background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px); background-size:32px 32px; min-height:100vh; padding:32px 16px 80px; }
+  body::before { content:""; position:fixed; inset:0; background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,0.5) 100%); pointer-events:none; z-index:0; }
 
-  html, body {
-    margin: 0; padding: 0;
-    background: var(--bg);
-    color: var(--ink);
-    font-family: 'Space Grotesk', system-ui, sans-serif;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  body {
-    background-image:
-      linear-gradient(var(--grid) 1px, transparent 1px),
-      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-    background-size: 32px 32px;
-    min-height: 100vh;
-    padding: 32px 16px 80px;
-  }
-
-  body::before {
-    content: "";
-    position: fixed; inset: 0;
-    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.5) 100%);
-    pointer-events: none; z-index: 0;
-  }
-
-  .sheet {
-    max-width: 920px;
-    margin: 0 auto;
-    background: var(--surface);
-    border: 1px solid var(--rule);
-    position: relative; z-index: 1;
-  }
+  .sheet { max-width:920px; margin:0 auto; background:var(--surface); border:1px solid var(--rule); position:relative; z-index:1; transition:border-color 0.3s ease; }
+  .sheet.editing { border-color: var(--yellow); }
 
   /* ── Status bar ── */
-  .status-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 24px;
-    background: var(--surface-2);
-    border-bottom: 1px solid var(--rule);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--ink-dim);
-  }
-  .status-bar .left, .status-bar .right { display: flex; align-items: center; gap: 14px; }
-  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-faint); transition: all 0.3s ease; }
-  .dot.live { background: var(--yellow-bright); box-shadow: 0 0 8px var(--yellow-bright); }
-  .dot.offline { background: var(--red); }
-  .dot.syncing { background: var(--yellow); animation: pulse 1s infinite; }
+  .status-bar { display:flex; justify-content:space-between; align-items:center; padding:8px 24px; background:var(--surface-2); border-bottom:1px solid var(--rule); font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.15em; text-transform:uppercase; color:var(--ink-dim); }
+  .status-bar .left,.status-bar .right { display:flex; align-items:center; gap:14px; }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--ink-faint); transition:all 0.3s ease; }
+  .dot.live { background:var(--yellow-bright); box-shadow:0 0 8px var(--yellow-bright); }
+  .dot.offline { background:var(--red); }
+  .dot.syncing { background:var(--yellow); animation:pulse 1s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
   /* ── Crew panel ── */
-  .crew-panel {
-    padding: 14px 36px;
-    border-bottom: 1px solid var(--rule);
-    background: var(--bg);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-  }
-  .crew-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-    margin-right: 4px;
-    flex-shrink: 0;
-  }
-  .crew-chip {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 10px;
-    border: 1px solid var(--rule);
-    background: var(--surface);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--ink-dim);
-    transition: all 0.2s ease;
-    position: relative;
-  }
-  .crew-chip.available { border-color: var(--green); color: var(--ink); }
-  .crew-chip.busy { border-color: var(--red); color: var(--ink); }
-  .crew-chip.me { background: rgba(244,208,63,0.06); border-color: var(--yellow); color: var(--yellow); }
-
-  .crew-status-dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--ink-faint);
-    flex-shrink: 0;
-  }
-  .crew-chip.available .crew-status-dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
-  .crew-chip.busy .crew-status-dot { background: var(--red); box-shadow: 0 0 6px var(--red); animation: pulse 2s infinite; }
-  .crew-chip.me .crew-status-dot { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
-
-  .crew-tasks {
-    font-size: 9px;
-    color: var(--red);
-    letter-spacing: 0.05em;
-    opacity: 0.9;
-  }
-  .crew-chip.me .crew-tasks { color: var(--yellow); }
+  .crew-panel { padding:14px 36px; border-bottom:1px solid var(--rule); background:var(--bg); display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .crew-label { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-faint); margin-right:4px; flex-shrink:0; }
+  .crew-chip { display:flex; align-items:center; gap:6px; padding:5px 10px; border:1px solid var(--rule); background:var(--surface); font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-dim); }
+  .crew-chip.available { border-color:var(--green); color:var(--ink); }
+  .crew-chip.busy { border-color:var(--red); color:var(--ink); }
+  .crew-chip.me { background:rgba(244,208,63,0.06); border-color:var(--yellow); color:var(--yellow); }
+  .crew-status-dot { width:6px; height:6px; border-radius:50%; background:var(--ink-faint); flex-shrink:0; }
+  .crew-chip.available .crew-status-dot { background:var(--green); box-shadow:0 0 6px var(--green); }
+  .crew-chip.busy .crew-status-dot { background:var(--red); box-shadow:0 0 6px var(--red); animation:pulse 2s infinite; }
+  .crew-chip.me .crew-status-dot { background:var(--yellow); box-shadow:0 0 6px var(--yellow); }
+  .crew-tasks { font-size:9px; color:var(--red); letter-spacing:0.05em; }
+  .crew-chip.me .crew-tasks { color:var(--yellow); }
 
   /* ── Header ── */
-  header {
-    padding: 36px 36px 24px;
-    border-bottom: 1px solid var(--rule);
-    position: relative;
-    background: linear-gradient(180deg, transparent 0%, rgba(244,208,63,0.02) 100%), var(--surface);
-  }
-  header::before, header::after {
-    content: "";
-    position: absolute;
-    width: 12px; height: 12px;
-    border: 1px solid var(--yellow);
-    opacity: 0.5;
-  }
-  header::before { bottom: 12px; left: 12px; border-right: none; border-top: none; }
-  header::after  { bottom: 12px; right: 12px; border-left: none; border-top: none; }
+  header { padding:36px 36px 24px; border-bottom:1px solid var(--rule); position:relative; background:linear-gradient(180deg,transparent 0%,rgba(244,208,63,0.02) 100%),var(--surface); }
+  header::before,header::after { content:""; position:absolute; width:12px; height:12px; border:1px solid var(--yellow); opacity:0.5; }
+  header::before { bottom:12px; left:12px; border-right:none; border-top:none; }
+  header::after  { bottom:12px; right:12px; border-left:none; border-top:none; }
 
-  .corner-mark {
-    position: absolute;
-    top: 24px; right: 28px;
-    height: 38px; width: auto;
-    opacity: 0.85;
-    filter: drop-shadow(0 0 12px rgba(244,208,63,0.15));
-    pointer-events: none; z-index: 2;
-  }
-  .doc-id {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px; letter-spacing: 0.18em;
-    text-transform: uppercase; color: var(--ink-faint);
-  }
-  .doc-id span { color: var(--yellow); font-weight: 700; }
+  .corner-mark { position:absolute; top:24px; right:28px; height:38px; width:auto; opacity:0.85; filter:drop-shadow(0 0 12px rgba(244,208,63,0.15)); pointer-events:none; z-index:2; }
 
-  h1 {
-    font-family: 'Archivo Black', sans-serif;
-    font-size: clamp(38px,7vw,68px);
-    line-height: 0.92; margin: 16px 0 4px;
-    letter-spacing: -0.03em; text-transform: uppercase; color: var(--ink);
+  /* Edit mode button — sits top-right, above corner mark */
+  .edit-mode-btn {
+    position:absolute; top:16px; right:16px; z-index:10;
+    font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700;
+    letter-spacing:0.15em; text-transform:uppercase;
+    background:transparent; border:1px solid var(--rule);
+    color:var(--ink-faint); padding:7px 13px; cursor:pointer;
+    transition:all 0.15s ease;
   }
-  h1 .accent { color: var(--yellow); }
+  .edit-mode-btn:hover { border-color:var(--yellow); color:var(--yellow); }
+  .edit-mode-btn.active { background:var(--yellow); border-color:var(--yellow); color:var(--bg); }
 
-  .tagline {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px; letter-spacing: 0.15em;
-    text-transform: uppercase; color: var(--ink-dim); margin-top: 8px;
+  /* Edit mode banner */
+  .edit-banner {
+    display:none; padding:10px 36px;
+    background:rgba(244,208,63,0.08);
+    border-bottom:1px solid var(--yellow);
+    font-family:'JetBrains Mono',monospace; font-size:10px;
+    letter-spacing:0.15em; text-transform:uppercase;
+    color:var(--yellow);
+    align-items:center; gap:12px;
+  }
+  .sheet.editing .edit-banner { display:flex; }
+  .edit-banner-dot { width:6px; height:6px; border-radius:50%; background:var(--yellow); animation:pulse 1.2s infinite; flex-shrink:0; }
+
+  /* Doc bar */
+  .doc-bar { display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+  .doc-id { font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-faint); }
+  .doc-id span { color:var(--yellow); font-weight:700; }
+
+  /* Editable inline fields */
+  .inline-field {
+    font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.12em;
+    text-transform:uppercase; color:var(--yellow); font-weight:700;
+    background:transparent; border:none; outline:none;
+    cursor:default; pointer-events:none;
+    padding:2px 4px; min-width:20px;
+    border-bottom:1px solid transparent;
+    transition:border-color 0.15s, background 0.15s;
+  }
+  .inline-field.label-field {
+    color:var(--ink-dim); font-weight:400; font-size:10px; text-transform:uppercase;
+    border:1px solid transparent; padding:4px 10px; background:var(--surface-2);
+  }
+  .sheet.editing .inline-field {
+    cursor:text; pointer-events:all;
+    border-bottom-color:var(--yellow-dim);
+    background:rgba(244,208,63,0.04);
+  }
+  .sheet.editing .inline-field.label-field {
+    border-color:var(--yellow-dim);
+    background:rgba(244,208,63,0.04);
+  }
+  .sheet.editing .inline-field:focus {
+    border-bottom-color:var(--yellow);
+    background:rgba(244,208,63,0.08);
+    color:var(--yellow-bright);
+  }
+  .sheet.editing .inline-field.label-field:focus {
+    border-color:var(--yellow);
+    background:rgba(244,208,63,0.08);
+    color:var(--yellow);
   }
 
-  .stamp {
-    position: absolute;
-    bottom: 90px; right: 36px;
-    border: 2px solid var(--yellow);
-    color: var(--yellow);
-    padding: 8px 14px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px; font-weight: 700;
-    letter-spacing: 0.22em;
-    transform: rotate(-3deg);
-    background: rgba(244,208,63,0.05);
-  }
-  .stamp.complete { background: var(--yellow); border-color: var(--yellow); color: var(--bg); }
-
-  .meta-row {
-    display: flex; justify-content: space-between; flex-wrap: wrap;
-    gap: 16px; margin-top: 22px; padding-top: 16px;
-    border-top: 1px dashed var(--rule);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px; letter-spacing: 0.1em;
-    text-transform: uppercase; color: var(--ink-dim);
-  }
-  .meta-row b { color: var(--ink); font-weight: 500; }
+  h1 { font-family:'Archivo Black',sans-serif; font-size:clamp(38px,7vw,68px); line-height:0.92; margin:16px 0 4px; letter-spacing:-0.03em; text-transform:uppercase; color:var(--ink); }
+  h1 .accent { color:var(--yellow); }
+  .tagline { font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.15em; text-transform:uppercase; color:var(--ink-dim); margin-top:8px; }
+  .stamp { position:absolute; bottom:90px; right:36px; border:2px solid var(--yellow); color:var(--yellow); padding:8px 14px; font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.22em; transform:rotate(-3deg); background:rgba(244,208,63,0.05); }
+  .stamp.complete { background:var(--yellow); border-color:var(--yellow); color:var(--bg); }
+  .meta-row { display:flex; justify-content:space-between; flex-wrap:wrap; gap:16px; margin-top:22px; padding-top:16px; border-top:1px dashed var(--rule); font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--ink-dim); }
+  .meta-row b { color:var(--ink); font-weight:500; }
 
   /* ── Progress ── */
-  .progress-wrap {
-    padding: 22px 36px;
-    border-bottom: 1px solid var(--rule);
-    display: flex; align-items: center; gap: 22px;
-    background: var(--surface-2);
-  }
-  .progress-track {
-    flex: 1; height: 16px;
-    background: var(--bg);
-    border: 1px solid var(--rule);
-    position: relative; overflow: hidden;
-  }
-  .progress-track::before {
-    content: "";
-    position: absolute; inset: 0;
-    background-image: repeating-linear-gradient(90deg, transparent 0 23px, var(--rule) 23px 24px);
-    pointer-events: none; z-index: 2;
-  }
-  .progress-fill-active {
-    position: absolute; top: 0; bottom: 0; left: 0;
-    width: 0%;
-    background: repeating-linear-gradient(-45deg, #3a3a35 0 8px, #2a2a25 8px 16px);
-    transition: width 0.5s cubic-bezier(.2,.8,.2,1);
-    z-index: 0;
-  }
-  .progress-fill {
-    position: absolute; top: 0; bottom: 0; left: 0;
-    width: 0%;
-    background: var(--yellow);
-    background-image: repeating-linear-gradient(-45deg, var(--yellow) 0 8px, var(--yellow-bright) 8px 16px);
-    transition: width 0.5s cubic-bezier(.2,.8,.2,1);
-    box-shadow: 0 0 12px rgba(244,208,63,0.3);
-    z-index: 1;
-  }
-  .progress-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px; font-weight: 700;
-    letter-spacing: 0.1em; min-width: 110px;
-    text-align: right; color: var(--ink);
-  }
-  .progress-label .pct { color: var(--yellow); margin-left: 8px; }
-
-  /* ── Main / Sections ── */
-  main { padding: 8px 36px 36px; position: relative; }
-  section { padding: 26px 0 8px; border-bottom: 1px dashed var(--rule); }
-  section:last-of-type { border-bottom: none; }
-
-  .sec-head {
-    display: flex; align-items: baseline;
-    gap: 16px; margin-bottom: 16px; flex-wrap: wrap;
-  }
-  .sec-num {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px; font-weight: 700;
-    background: var(--yellow); color: var(--bg);
-    padding: 4px 9px; letter-spacing: 0.12em;
-  }
-  .sec-title {
-    font-family: 'Archivo Black', sans-serif;
-    font-weight: 900; font-size: 22px;
-    letter-spacing: 0.01em; margin: 0;
-    text-transform: uppercase; color: var(--ink);
-  }
-  .sec-time {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px; color: var(--ink-faint);
-    letter-spacing: 0.12em; text-transform: uppercase;
-    margin-left: auto; padding: 4px 8px; border: 1px solid var(--rule);
-  }
-
-  /* ── Tasks ── */
-  ul.tasks { list-style: none; padding: 0; margin: 0; }
-
-  li.task {
-    display: flex; align-items: flex-start;
-    gap: 16px; padding: 14px 6px;
-    border-top: 1px solid var(--rule);
-    cursor: pointer;
-    transition: background 0.15s ease, padding-left 0.15s ease;
-    position: relative;
-    user-select: none; -webkit-user-select: none;
-  }
-  li.task:first-child { border-top: none; }
-  li.task:hover { background: rgba(244,208,63,0.04); padding-left: 12px; }
-  li.task:hover::before {
-    content: ">";
-    position: absolute; left: 0; top: 14px;
-    color: var(--yellow);
-    font-family: 'JetBrains Mono', monospace; font-weight: 700;
-  }
-
-  /* Checkbox */
-  .check-box {
-    flex-shrink: 0; width: 22px; height: 22px;
-    border: 1.5px solid var(--ink-dim);
-    background: var(--bg); margin-top: 1px;
-    position: relative; transition: all 0.2s ease;
-  }
-  li.task:hover .check-box { border-color: var(--yellow); }
-  .check-box::after {
-    content: "✓";
-    position: absolute; inset: 0;
-    display: flex; align-items: center; justify-content: center;
-    color: var(--bg); font-size: 16px; font-weight: 700;
-    transform: scale(0);
-    transition: transform 0.25s cubic-bezier(.5,1.6,.4,1);
-  }
-  li.task.done .check-box { background: var(--yellow); border-color: var(--yellow); }
-  li.task.done .check-box::after { transform: scale(1); }
-
-  /* Active state */
-  li.task.active { background: rgba(244,208,63,0.03); }
-  li.task.active .check-box {
-    border-color: var(--yellow);
-    box-shadow: 0 0 10px rgba(244,208,63,0.4);
-    animation: glow-pulse 2s ease-in-out infinite;
-  }
-  li.task.active .check-box::after {
-    content: "…";
-    font-size: 11px; letter-spacing: -2px;
-    color: var(--yellow); transform: scale(1);
-  }
-  @keyframes glow-pulse {
-    0%,100% { box-shadow: 0 0 8px rgba(244,208,63,0.3); }
-    50%      { box-shadow: 0 0 20px rgba(244,208,63,0.7); }
-  }
-
-  .task-text {
-    flex: 1; font-size: 16px; line-height: 1.45; color: var(--ink);
-    transition: color 0.2s ease, opacity 0.2s ease;
-  }
-  li.task.done .task-text {
-    color: var(--ink-faint);
-    text-decoration: line-through;
-    text-decoration-thickness: 1.5px;
-    text-decoration-color: var(--yellow);
-    opacity: 0.6;
-  }
-  li.task.active .task-text { color: var(--yellow); opacity: 0.9; }
-
-  .task-meta {
-    display: flex; flex-direction: column;
-    align-items: flex-end; gap: 4px;
-    flex-shrink: 0; padding-left: 14px;
-    border-left: 1px solid var(--rule);
-    min-width: 120px;
-  }
-  .task-tag {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px; letter-spacing: 0.12em;
-    color: var(--ink-faint); text-transform: uppercase;
-  }
-  .task-by {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px; letter-spacing: 0.1em;
-    color: var(--yellow-dim); text-transform: uppercase;
-  }
-  /* Multiple workers shown as chips */
-  .worker-chips {
-    display: flex; flex-wrap: wrap;
-    gap: 3px; justify-content: flex-end;
-    margin-top: 2px;
-  }
-  .worker-chip {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 8px; letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--bg);
-    background: var(--yellow);
-    padding: 2px 5px;
-    animation: blink 2s step-end infinite;
-  }
-  /* Stagger blink so they don't all pulse together */
-  .worker-chip:nth-child(2) { animation-delay: 0.4s; }
-  .worker-chip:nth-child(3) { animation-delay: 0.8s; }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.5} }
-
-  /* ── Footer ── */
-  footer {
-    padding: 20px 36px;
-    border-top: 1px solid var(--rule);
-    background: var(--surface-2);
-    display: flex; justify-content: space-between;
-    align-items: center;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px; letter-spacing: 0.15em;
-    text-transform: uppercase; color: var(--ink-faint);
-    flex-wrap: wrap; gap: 14px;
-  }
-  .footer-actions { display: flex; gap: 10px; }
-  .btn {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px; font-weight: 700;
-    letter-spacing: 0.15em; text-transform: uppercase;
-    background: transparent; border: 1px solid var(--rule);
-    color: var(--ink-dim); padding: 9px 16px;
-    cursor: pointer; transition: all 0.15s ease;
-  }
-  .btn:hover { border-color: var(--yellow); color: var(--yellow); }
-  .switch-user {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--ink-faint);
-    background: none; border: none; cursor: pointer; padding: 0;
-    transition: color 0.15s ease;
-  }
-  .switch-user:hover { color: var(--yellow); }
+  .progress-wrap { padding:22px 36px; border-bottom:1px solid var(--rule); display:flex; align-items:center; gap:22px; background:var(--surface-2); }
+  .progress-track { flex:1; height:16px; background:var(--bg); border:1px solid var(--rule); position:relative; overflow:hidden; }
+  .progress-track::before { content:""; position:absolute; inset:0; background-image:repeating-linear-gradient(90deg,transparent 0 23px,var(--rule) 23px 24px); pointer-events:none; z-index:2; }
+  .progress-fill-active { position:absolute; top:0; bottom:0; left:0; width:0%; background:repeating-linear-gradient(-45deg,#3a3a35 0 8px,#2a2a25 8px 16px); transition:width 0.5s cubic-bezier(.2,.8,.2,1); z-index:0; }
+  .progress-fill { position:absolute; top:0; bottom:0; left:0; width:0%; background:var(--yellow); background-image:repeating-linear-gradient(-45deg,var(--yellow) 0 8px,var(--yellow-bright) 8px 16px); transition:width 0.5s cubic-bezier(.2,.8,.2,1); box-shadow:0 0 12px rgba(244,208,63,0.3); z-index:1; }
+  .progress-label { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700; letter-spacing:0.1em; min-width:110px; text-align:right; color:var(--ink); }
+  .progress-label .pct { color:var(--yellow); margin-left:8px; }
 
   /* ── Hint bar ── */
-  .hint-bar {
-    padding: 8px 36px;
-    background: var(--surface-2);
-    border-bottom: 1px solid var(--rule);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--ink-faint);
-    display: flex; gap: 24px; flex-wrap: wrap;
-  }
-  .hint-bar span { display: flex; align-items: center; gap: 6px; }
-  .hint-key {
-    border: 1px solid var(--ink-faint);
-    padding: 1px 5px; font-size: 8px;
-    color: var(--ink-dim);
-  }
+  .hint-bar { padding:8px 36px; background:var(--surface-2); border-bottom:1px solid var(--rule); font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-faint); display:flex; gap:24px; flex-wrap:wrap; }
+  .hint-bar span { display:flex; align-items:center; gap:6px; }
+  .hint-key { border:1px solid var(--ink-faint); padding:1px 5px; font-size:8px; color:var(--ink-dim); }
 
-  /* ── Name picker modal ── */
-  .modal-backdrop {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.85);
-    backdrop-filter: blur(4px);
-    z-index: 100;
-    display: flex; align-items: center; justify-content: center;
-    padding: 24px;
-    opacity: 1; transition: opacity 0.25s ease;
-  }
-  .modal-backdrop.hidden { opacity: 0; pointer-events: none; }
-  .modal {
-    background: var(--surface);
-    border: 1px solid var(--yellow);
-    max-width: 440px; width: 100%;
-    padding: 36px; position: relative;
-    box-shadow: 0 0 60px rgba(244,208,63,0.12);
-  }
-  .modal-glider {
-    height: 32px; width: auto;
-    display: block; margin-bottom: 20px;
-    opacity: 0.9;
-    filter: drop-shadow(0 0 8px rgba(244,208,63,0.2));
-  }
-  .modal-title {
-    font-family: 'Archivo Black', sans-serif;
-    font-size: 22px; text-transform: uppercase;
-    letter-spacing: -0.01em; color: var(--ink);
-    margin: 0 0 4px;
-  }
-  .modal-sub {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px; letter-spacing: 0.15em;
-    text-transform: uppercase; color: var(--ink-faint);
-    margin-bottom: 28px;
-  }
-  .name-grid {
-    display: grid; grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-  .name-btn {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 15px; font-weight: 600;
-    background: var(--surface-2);
-    border: 1px solid var(--rule);
-    color: var(--ink); padding: 14px 16px;
-    cursor: pointer; text-align: left;
-    letter-spacing: 0.02em;
-    transition: all 0.15s ease; position: relative;
-  }
-  .name-btn::before {
-    content: "";
-    position: absolute; left: 0; top: 0; bottom: 0;
-    width: 3px; background: var(--yellow);
-    transform: scaleY(0); transition: transform 0.15s ease;
-  }
-  .name-btn:hover { border-color: var(--yellow); background: rgba(244,208,63,0.06); color: var(--yellow); padding-left: 20px; }
-  .name-btn:hover::before { transform: scaleY(1); }
+  /* ── Main / sections ── */
+  main { padding:8px 36px 36px; position:relative; }
+  section { padding:26px 0 8px; border-bottom:1px dashed var(--rule); }
+  section:last-of-type { border-bottom:none; }
+  .sec-head { display:flex; align-items:baseline; gap:16px; margin-bottom:16px; flex-wrap:wrap; }
+  .sec-num { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; background:var(--yellow); color:var(--bg); padding:4px 9px; letter-spacing:0.12em; flex-shrink:0; }
+  .sec-title { font-family:'Archivo Black',sans-serif; font-size:22px; margin:0; text-transform:uppercase; color:var(--ink); }
+  .sec-time { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--ink-faint); letter-spacing:0.12em; text-transform:uppercase; margin-left:auto; padding:4px 8px; border:1px solid var(--rule); }
 
-  /* ── Mobile ── */
-  @media (max-width: 700px) {
-    header, main, footer, .progress-wrap, .status-bar, .crew-panel, .hint-bar { padding-left: 18px; padding-right: 18px; }
-    .stamp { bottom: 70px; right: 18px; font-size: 9px; padding: 6px 10px; }
-    .corner-mark { top: 18px; right: 18px; height: 28px; }
-    .task-meta { padding-left: 0; border-left: none; align-items: flex-start; flex-direction: row; width: 100%; gap: 12px; min-width: 0; }
-    li.task { flex-wrap: wrap; }
-    .meta-row { flex-direction: column; gap: 6px; }
-    .hint-bar { gap: 12px; }
+  ul.tasks { list-style:none; padding:0; margin:0; }
+  li.task { display:flex; align-items:flex-start; gap:16px; padding:14px 6px; border-top:1px solid var(--rule); cursor:pointer; transition:background 0.15s ease,padding-left 0.15s ease; position:relative; user-select:none; -webkit-user-select:none; }
+  li.task:first-child { border-top:none; }
+
+  /* Normal hover only when NOT in edit mode */
+  .sheet:not(.editing) li.task:hover { background:rgba(244,208,63,0.04); padding-left:12px; }
+  .sheet:not(.editing) li.task:hover::before { content:">"; position:absolute; left:0; top:14px; color:var(--yellow); font-family:'JetBrains Mono',monospace; font-weight:700; }
+  /* In edit mode, tasks aren't clickable */
+  .sheet.editing li.task { cursor:default; }
+  .sheet.editing li.task:hover { background:transparent; padding-left:6px; }
+
+  .check-box { flex-shrink:0; width:22px; height:22px; border:1.5px solid var(--ink-dim); background:var(--bg); margin-top:1px; position:relative; transition:all 0.2s ease; }
+  .sheet:not(.editing) li.task:hover .check-box { border-color:var(--yellow); }
+  .check-box::after { content:"✓"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--bg); font-size:16px; font-weight:700; transform:scale(0); transition:transform 0.25s cubic-bezier(.5,1.6,.4,1); }
+  li.task.done .check-box { background:var(--yellow); border-color:var(--yellow); }
+  li.task.done .check-box::after { transform:scale(1); }
+  li.task.active .check-box { border-color:var(--yellow); box-shadow:0 0 10px rgba(244,208,63,0.4); animation:glow-pulse 2s ease-in-out infinite; }
+  li.task.active .check-box::after { content:"…"; font-size:11px; letter-spacing:-2px; color:var(--yellow); transform:scale(1); }
+  @keyframes glow-pulse { 0%,100%{box-shadow:0 0 8px rgba(244,208,63,0.3)} 50%{box-shadow:0 0 20px rgba(244,208,63,0.7)} }
+
+  .task-text { flex:1; font-size:16px; line-height:1.45; color:var(--ink); transition:color 0.2s ease,opacity 0.2s ease; }
+  li.task.done .task-text { color:var(--ink-faint); text-decoration:line-through; text-decoration-thickness:1.5px; text-decoration-color:var(--yellow); opacity:0.6; }
+  li.task.active .task-text { color:var(--yellow); opacity:0.9; }
+
+  .task-meta { display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0; padding-left:14px; border-left:1px solid var(--rule); min-width:110px; }
+  .task-tag { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.12em; color:var(--ink-faint); text-transform:uppercase; }
+  .task-by { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.1em; color:var(--yellow-dim); text-transform:uppercase; }
+  .worker-chips { display:flex; flex-wrap:wrap; gap:3px; justify-content:flex-end; margin-top:2px; }
+  .worker-chip { font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:0.08em; text-transform:uppercase; color:var(--bg); background:var(--yellow); padding:2px 5px; animation:blink 2s step-end infinite; }
+  .worker-chip:nth-child(2){animation-delay:0.4s} .worker-chip:nth-child(3){animation-delay:0.8s}
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  /* Remove task button — only visible in edit mode */
+  .remove-task-btn { display:none; flex-shrink:0; background:transparent; border:1px solid var(--rule); color:var(--ink-faint); font-family:'JetBrains Mono',monospace; font-size:12px; width:26px; height:26px; cursor:pointer; align-items:center; justify-content:center; margin-top:1px; transition:all 0.15s; }
+  .sheet.editing .remove-task-btn { display:flex; }
+  .remove-task-btn:hover { border-color:var(--red); color:var(--red); }
+
+  /* Add task row — only visible in edit mode */
+  .add-task-row { display:none; align-items:center; gap:8px; padding:12px 6px 4px; border-top:1px dashed rgba(244,208,63,0.2); margin-top:4px; }
+  .sheet.editing .add-task-row { display:flex; }
+  .add-task-input { flex:1; background:var(--bg); border:1px dashed var(--rule); color:var(--ink); padding:9px 12px; font-family:'Space Grotesk',sans-serif; font-size:14px; outline:none; transition:border-color 0.15s; }
+  .add-task-input::placeholder { color:var(--ink-faint); }
+  .add-task-input:focus { border-color:var(--yellow); }
+  .add-task-tag-input { width:90px; background:var(--bg); border:1px dashed var(--rule); color:var(--ink); padding:9px 10px; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.08em; outline:none; transition:border-color 0.15s; }
+  .add-task-tag-input::placeholder { color:var(--ink-faint); }
+  .add-task-tag-input:focus { border-color:var(--yellow); }
+  .add-task-btn { background:transparent; border:1px solid var(--rule); color:var(--ink-faint); font-family:'JetBrains Mono',monospace; font-size:20px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.15s; flex-shrink:0; }
+  .add-task-btn:hover { border-color:var(--yellow); color:var(--yellow); }
+
+  /* ── Footer ── */
+  footer { padding:20px 36px; border-top:1px solid var(--rule); background:var(--surface-2); display:flex; justify-content:space-between; align-items:center; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.15em; text-transform:uppercase; color:var(--ink-faint); flex-wrap:wrap; gap:14px; }
+  .footer-actions { display:flex; gap:10px; }
+  .btn { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.15em; text-transform:uppercase; background:transparent; border:1px solid var(--rule); color:var(--ink-dim); padding:9px 16px; cursor:pointer; transition:all 0.15s ease; }
+  .btn:hover { border-color:var(--yellow); color:var(--yellow); }
+  .switch-user { font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-faint); background:none; border:none; cursor:pointer; padding:0; transition:color 0.15s ease; }
+  .switch-user:hover { color:var(--yellow); }
+
+  /* ── Modal ── */
+  .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(4px); z-index:100; display:flex; align-items:center; justify-content:center; padding:24px; opacity:1; transition:opacity 0.25s ease; }
+  .modal-backdrop.hidden { opacity:0; pointer-events:none; }
+  .modal { background:var(--surface); border:1px solid var(--yellow); max-width:440px; width:100%; padding:36px; box-shadow:0 0 60px rgba(244,208,63,0.12); }
+  .modal-glider { height:32px; width:auto; display:block; margin-bottom:20px; opacity:0.9; filter:drop-shadow(0 0 8px rgba(244,208,63,0.2)); }
+  .modal-title { font-family:'Archivo Black',sans-serif; font-size:22px; text-transform:uppercase; letter-spacing:-0.01em; color:var(--ink); margin:0 0 4px; }
+  .modal-sub { font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.15em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:28px; }
+  .name-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .name-btn { font-family:'Space Grotesk',sans-serif; font-size:15px; font-weight:600; background:var(--surface-2); border:1px solid var(--rule); color:var(--ink); padding:14px 16px; cursor:pointer; text-align:left; letter-spacing:0.02em; transition:all 0.15s ease; position:relative; }
+  .name-btn::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--yellow); transform:scaleY(0); transition:transform 0.15s ease; }
+  .name-btn:hover { border-color:var(--yellow); background:rgba(244,208,63,0.06); color:var(--yellow); padding-left:20px; }
+  .name-btn:hover::before { transform:scaleY(1); }
+
+  @media (max-width:700px) {
+    header,main,footer,.progress-wrap,.status-bar,.crew-panel,.hint-bar { padding-left:18px; padding-right:18px; }
+    .stamp { bottom:70px; right:18px; font-size:9px; padding:6px 10px; }
+    .corner-mark { display:none; }
+    .edit-mode-btn { top:12px; right:12px; }
+    .task-meta { padding-left:0; border-left:none; align-items:flex-start; flex-direction:row; width:100%; gap:12px; min-width:0; }
+    li.task { flex-wrap:wrap; }
+    .meta-row { flex-direction:column; gap:6px; }
+    .doc-bar { gap:10px; }
+    .add-task-row { flex-wrap:wrap; }
+    .add-task-tag-input { width:80px; }
   }
 </style>
 </head>
@@ -515,27 +246,35 @@
   </div>
 </div>
 
-<div class="sheet">
+<div class="sheet" id="sheet">
 
   <div class="status-bar">
     <div class="left">
       <span class="dot" id="connDot"></span>
       <span id="connLabel">Initializing</span>
     </div>
-    <div class="right">
-      <span id="lastSync">— —</span>
-    </div>
+    <div class="right"><span id="lastSync">— —</span></div>
   </div>
 
-  <!-- Crew status panel -->
   <div class="crew-panel" id="crewPanel">
     <span class="crew-label">Crew</span>
-    <!-- populated by JS -->
   </div>
 
   <header>
     <img src="maris_glider.png" alt="" class="corner-mark" />
-    <div class="doc-id">DOC <span>// MARIS-TS</span> · REV 03 · <span id="docDate">—</span></div>
+
+    <!-- Edit mode toggle -->
+    <button class="edit-mode-btn" id="editModeBtn">Edit</button>
+
+    <div class="doc-bar">
+      <div class="doc-id">DOC <span>// MARIS-TS</span> · REV 03</div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--ink-faint);">Date</span>
+        <input class="inline-field" id="fieldDate" type="text" value="05·MAY·2026" spellcheck="false" />
+      </div>
+      <input class="inline-field label-field" id="fieldLabel" type="text" value="Test Day Plan" spellcheck="false" />
+    </div>
+
     <h1>project <span class="accent">maris</span></h1>
     <div class="tagline">Operations · Task Sheet · Live</div>
     <div class="stamp" id="stamp">in progress</div>
@@ -544,6 +283,12 @@
       <span>OPERATOR <b id="metaOperator">—</b></span>
     </div>
   </header>
+
+  <!-- Edit mode banner -->
+  <div class="edit-banner">
+    <span class="edit-banner-dot"></span>
+    Edit mode — add or remove tasks, change date and label. Click <strong style="color:var(--yellow)">Done Editing</strong> when finished.
+  </div>
 
   <div class="hint-bar">
     <span><span class="hint-key">CLICK</span> claim / unclaim task</span>
@@ -576,87 +321,111 @@
 <script>
   const JSONBIN_BIN_ID = "69f3aef2aaba882197586b6e";
   const JSONBIN_KEY    = "$2a$10$Z8PRjpu01cJL8G6d09tJ3eIFX7LjNW/j1fjAAy3soytHPWMRPRioO";
+  const SHEET_VERSION  = "2025-05-05-v2";
 
-  const TEAM = ["Alvaro", "Bartol", "Hussain", "Ibrahim", "James", "Jasper", "Kevin", "Poojak"];
+  const TEAM = ["Alvaro","Bartol","Hussain","Ibrahim","James","Jasper","Kevin","Poojak"];
 
-  const SECTIONS = [
-    { id: "01", title: "Skeleton", time: "09:00 — 11:00", tasks: [
-      { id: "t1",  text: "Finish skeleton", tag: "structural" },
-      { id: "t2",  text: "Bond the bigheads onto the skeleton", tag: "adhesive" },
+  // Fixed sections — skeleton tasks are stored dynamically in bin
+  const FIXED_SECTIONS = [
+    { id:"01", title:"VBD", time:"flexible", tasks:[
+      {id:"t1", text:"Torque the penetrators on the end cap",                         tag:"seal"},
+      {id:"t2", text:"Check cap between piston housing and bottom plate",             tag:"inspect"},
+      {id:"t3", text:"Check grub screw is flush",                                     tag:"inspect"},
+      {id:"t4", text:"Check the CAN command [dry test]",                              tag:"electrical"},
+      {id:"t5", text:"Seal with end cap",                                             tag:"seal"},
     ]},
-    { id: "02", title: "Skins & Tail", time: "~12:00 onwards", tasks: [
-      { id: "t3",  text: "Continue trimming the skins", tag: "cut" },
-      { id: "t4",  text: "Make cutout for tail in the skin panel", tag: "cut" },
-      { id: "t5",  text: "Begin working on the tail U-section", tag: "fab" },
-      { id: "t6",  text: "Drill the tail and bond the threaded rods into it", tag: "drill · bond" },
-      { id: "t7",  text: "Drill and counterbore the wingtips", tag: "drill" },
+    { id:"02", title:"P&R", time:"flexible", tasks:[
+      {id:"t6",  text:"Torque the penetrators",                                       tag:"seal"},
+      {id:"t7",  text:"Assemble the pitch assembly with rails",                       tag:"mechanical"},
+      {id:"t8",  text:"Assemble the roll assembly, make sure the grub screws are tight", tag:"mechanical"},
+      {id:"t9",  text:"Check the direction of roll and pitch on teensy",              tag:"electrical"},
+      {id:"t10", text:"Check the CAN command [dry test]",                             tag:"electrical"},
+      {id:"t11", text:"Seal with end cap",                                            tag:"seal"},
     ]},
-    { id: "03", title: "Mechanical / Hardware", time: "flexible", tasks: [
-      { id: "t8",  text: "Cut buoyancy foams on the bandsaw", tag: "workshop" },
-      { id: "t9",  text: "Drive the VBD motors for a 45° turn, then tighten the grub screws", tag: "vbd" },
-      { id: "t10", text: "Grease the O-ring flanges", tag: "seal" },
-      { id: "t11", text: "Check all wetlink penetrators", tag: "seal · inspect" },
-    ]},
-    { id: "04", title: "Electrical", time: "flexible", tasks: [
-      { id: "t12", text: "Sort out power cables", tag: "wiring" },
-      { id: "t13", text: "Recrimp the yellow ethernet cable", tag: "wiring" },
-      { id: "t14", text: "Test the battery packs", tag: "test" },
-    ]},
-    { id: "05", title: "Admin", time: "end of day", tasks: [
-      { id: "t15", text: "Email Davide and Giles with a progress update", tag: "comms" },
-    ]},
+    { id:"03", title:"Skeleton", time:"flexible", tasks:[], dynamic:true },
   ];
 
-  // Build a lookup: taskId -> section number label
-  const TASK_SEC = {};
-  SECTIONS.forEach(sec => sec.tasks.forEach(t => { TASK_SEC[t.id] = sec.id; }));
+  // ── State ──────────────────────────────────────────
+  let taskStates    = {};   // { taskId: { done, by, at, workers[] } }
+  let dynamicTasks  = [];   // [{id, text, tag}] stored in bin for section 03
+  let editMode      = false;
+  let operator      = localStorage.getItem("maris_operator") || "";
+  const $           = id => document.getElementById(id);
 
-  // state: { taskId: { done, by, at, workers: ["Name", ...] } }
-  let state = {};
-  let operator = localStorage.getItem("maris_operator") || "";
-  const $ = id => document.getElementById(id);
+  function getSections() {
+    return FIXED_SECTIONS.map(s => s.dynamic ? { ...s, tasks: dynamicTasks } : s);
+  }
 
+  function buildTaskSecMap() {
+    const map = {};
+    getSections().forEach(sec => sec.tasks.forEach(t => { map[t.id] = sec.id; }));
+    return map;
+  }
+
+  // ── Connection ─────────────────────────────────────
   function setConn(status, label) {
-    $("connDot").className = "dot " + (status || "");
+    $("connDot").className = "dot " + (status||"");
     $("connLabel").textContent = label;
   }
   function fmtTime(ts) {
-    return ts ? new Date(ts).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" }) : "— —";
+    return ts ? new Date(ts).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}) : "— —";
   }
 
-  // ---------- Crew panel ----------
+  // ── Crew panel ─────────────────────────────────────
   function renderCrew() {
     const panel = $("crewPanel");
     panel.innerHTML = `<span class="crew-label">Crew</span>`;
-
+    const map = buildTaskSecMap();
     TEAM.forEach(name => {
-      // Find all tasks this person is currently working on
-      const activeTasks = Object.entries(state)
-        .filter(([, e]) => !e.done && e.workers && e.workers.includes(name))
-        .map(([tid]) => TASK_SEC[tid])
-        .filter(Boolean);
-
-      const isBusy = activeTasks.length > 0;
-      const isMe   = name === operator;
-
+      const active = Object.entries(taskStates)
+        .filter(([,e]) => !e.done && e.workers && e.workers.includes(name))
+        .map(([tid]) => map[tid]).filter(Boolean);
       const chip = document.createElement("div");
-      chip.className = "crew-chip" + (isMe ? " me" : isBusy ? " busy" : " available");
-
-      const taskNums = activeTasks.length
-        ? `<span class="crew-tasks">[${activeTasks.join(",")}]</span>`
-        : "";
-
-      chip.innerHTML = `<span class="crew-status-dot"></span>${name}${taskNums}`;
+      chip.className = "crew-chip" + (name===operator?" me":active.length?" busy":" available");
+      chip.innerHTML = `<span class="crew-status-dot"></span>${name}${active.length?`<span class="crew-tasks">[${active.join(",")}]</span>`:""}`;
       panel.appendChild(chip);
     });
   }
 
-  // ---------- Render tasks ----------
+  // ── Edit mode ──────────────────────────────────────
+  function setEditMode(on) {
+    editMode = on;
+    const sheet = $("sheet");
+    const btn   = $("editModeBtn");
+    if (on) {
+      sheet.classList.add("editing");
+      btn.classList.add("active");
+      btn.textContent = "Done Editing";
+      // Make inline fields interactive
+      $("fieldDate").removeAttribute("readonly");
+      $("fieldLabel").removeAttribute("readonly");
+    } else {
+      sheet.classList.remove("editing");
+      btn.classList.remove("active");
+      btn.textContent = "Edit";
+      $("fieldDate").setAttribute("readonly","");
+      $("fieldLabel").setAttribute("readonly","");
+      // Save meta on exit
+      save();
+    }
+    render();
+  }
+
+  $("editModeBtn").addEventListener("click", () => setEditMode(!editMode));
+
+  // Save date/label whenever they change (debounced via save)
+  ["fieldDate","fieldLabel"].forEach(id => {
+    $(id).addEventListener("input", () => { if (editMode) scheduleSave(); });
+    $(id).addEventListener("keydown", e => { if (e.key === "Enter") { e.target.blur(); } });
+  });
+
+  // ── Render ─────────────────────────────────────────
   function render() {
     $("main").innerHTML = "";
-    let total = 0, done = 0, active = 0;
+    let total=0, done=0, active=0;
+    const sections = getSections();
 
-    SECTIONS.forEach(sec => {
+    sections.forEach(sec => {
       const s = document.createElement("section");
       s.dataset.sec = sec.id;
       s.innerHTML = `
@@ -668,28 +437,28 @@
         <ul class="tasks"></ul>`;
       const ul = s.querySelector("ul");
 
+      if (sec.tasks.length === 0) {
+        const empty = document.createElement("li");
+        empty.style.cssText = "padding:12px 6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-faint);letter-spacing:0.1em;border-top:none;cursor:default;";
+        empty.textContent = editMode ? "No tasks yet — add one below." : "No tasks yet.";
+        ul.appendChild(empty);
+      }
+
       sec.tasks.forEach(task => {
         total++;
-        const e = state[task.id] || {};
+        const e = taskStates[task.id] || {};
         const workers = Array.isArray(e.workers) ? e.workers : [];
         const isDone   = !!e.done;
         const isActive = !isDone && workers.length > 0;
-        if (isDone) done++;
-        else if (isActive) active++;
+        if (isDone) done++; else if (isActive) active++;
 
         const li = document.createElement("li");
-        li.className = "task" + (isDone ? " done" : isActive ? " active" : "");
+        li.className = "task" + (isDone?" done":isActive?" active":"");
         li.dataset.id = task.id;
 
         let workerHtml = "";
-        if (isDone && e.by) {
-          workerHtml = `<span class="task-by">✓ ${e.by}</span>`;
-        } else if (isActive) {
-          const chips = workers.map(w =>
-            `<span class="worker-chip">${w}</span>`
-          ).join("");
-          workerHtml = `<div class="worker-chips">${chips}</div>`;
-        }
+        if (isDone && e.by) workerHtml = `<span class="task-by">✓ ${e.by}</span>`;
+        else if (isActive)  workerHtml = `<div class="worker-chips">${workers.map(w=>`<span class="worker-chip">${w}</span>`).join("")}</div>`;
 
         li.innerHTML = `
           <div class="check-box"></div>
@@ -697,183 +466,220 @@
           <div class="task-meta">
             <span class="task-tag">${task.tag}</span>
             ${workerHtml}
-          </div>`;
+          </div>
+          <button class="remove-task-btn" data-id="${task.id}" title="Remove task">✕</button>`;
 
-        // Click = toggle working on it
-        li.addEventListener("click", () => {
-          if (!ensureOperator()) return;
-          if (isDone) return; // can't unclaim a done task via click
-          toggleWorker(task.id);
+        // Remove button
+        li.querySelector(".remove-task-btn").addEventListener("click", async ev => {
+          ev.stopPropagation();
+          if (sec.dynamic) {
+            dynamicTasks = dynamicTasks.filter(t => t.id !== task.id);
+          } else {
+            // For fixed sections: we store a "removed" override in the bin
+            if (!window._removedFixed) window._removedFixed = {};
+            window._removedFixed[task.id] = true;
+          }
+          delete taskStates[task.id];
+          render(); await save();
         });
 
-        // Right-click = mark done
-        li.addEventListener("contextmenu", ev => {
-          ev.preventDefault();
-          if (!ensureOperator()) return;
-          toggleDone(task.id);
-        });
-
-        // Long-hold = mark done (desktop mouse + mobile touch)
-        let pressTimer;
-        let longPressFired = false;
-
-        function startPress() {
-          longPressFired = false;
-          pressTimer = setTimeout(() => {
-            longPressFired = true;
-            if (ensureOperator()) toggleDone(task.id);
-          }, 600);
+        // Task interactions — disabled in edit mode
+        if (!editMode) {
+          li.addEventListener("click", () => { if (!ensureOp()) return; if (isDone) return; toggleWorker(task.id); });
+          li.addEventListener("contextmenu", ev => { ev.preventDefault(); if (!ensureOp()) return; toggleDone(task.id); });
+          let pt; let lpf=false;
+          function sp(){ lpf=false; pt=setTimeout(()=>{ lpf=true; if(ensureOp()) toggleDone(task.id); },600); }
+          function cp(){ clearTimeout(pt); }
+          li.addEventListener("mousedown", e=>{ if(e.button===0) sp(); });
+          li.addEventListener("mouseup", cp); li.addEventListener("mouseleave", cp);
+          li.addEventListener("click", e=>{ if(lpf){lpf=false;e.stopImmediatePropagation();} },true);
+          li.addEventListener("touchstart", sp,{passive:true});
+          li.addEventListener("touchend", cp);
+          li.addEventListener("touchmove", cp,{passive:true});
         }
-        function cancelPress() { clearTimeout(pressTimer); }
-
-        // Desktop mouse hold
-        li.addEventListener("mousedown", e => { if (e.button === 0) startPress(); });
-        li.addEventListener("mouseup",   cancelPress);
-        li.addEventListener("mouseleave", cancelPress);
-
-        // Prevent click firing after a completed long-hold
-        li.addEventListener("click", e => {
-          if (longPressFired) { longPressFired = false; e.stopImmediatePropagation(); }
-        }, true);
-
-        // Mobile touch hold
-        li.addEventListener("touchstart", startPress, { passive: true });
-        li.addEventListener("touchend",   cancelPress);
-        li.addEventListener("touchmove",  cancelPress, { passive: true });
 
         ul.appendChild(li);
       });
+
+      // Add task row (always rendered, CSS shows/hides per edit mode)
+      const addRow = document.createElement("div");
+      addRow.className = "add-task-row";
+      addRow.innerHTML = `
+        <input class="add-task-input"     type="text" placeholder="New task description…" id="ati_${sec.id}" />
+        <input class="add-task-tag-input" type="text" placeholder="tag"                   id="att_${sec.id}" />
+        <button class="add-task-btn" id="atb_${sec.id}">+</button>`;
+      s.appendChild(addRow);
+
+      const doAdd = async () => {
+        if (!ensureOp()) return;
+        const ti = $(`ati_${sec.id}`), tt = $(`att_${sec.id}`);
+        const text = ti.value.trim(); if (!text) return;
+        const newTask = { id: (sec.dynamic?"dyn_":"fix_"+sec.id+"_") + Date.now(), text, tag: tt.value.trim()||"misc" };
+        if (sec.dynamic) {
+          dynamicTasks = [...dynamicTasks, newTask];
+        } else {
+          // Inject into the fixed section's task list in memory
+          sec.tasks.push(newTask);
+          if (!window._extraFixed) window._extraFixed = [];
+          window._extraFixed.push({ secId: sec.id, task: newTask });
+        }
+        ti.value=""; tt.value="";
+        render(); await save();
+        const refocus = $(`ati_${sec.id}`); if(refocus) refocus.focus();
+      };
+      addRow.querySelector(`#atb_${sec.id}`).addEventListener("click", doAdd);
+      addRow.querySelector(`#ati_${sec.id}`).addEventListener("keydown", e=>{ if(e.key==="Enter") doAdd(); });
+
       $("main").appendChild(s);
     });
 
-    // Progress bar
-    const pct      = total ? (done / total) * 100 : 0;
-    const pctCombo = total ? ((done + active) / total) * 100 : 0;
-    $("progressFillActive").style.width = pctCombo + "%";
-    $("progressFill").style.width       = pct + "%";
-    $("progressCount").textContent = done + " / " + total;
-    $("progressPct").textContent   = Math.round(pct) + "%";
+    // Progress
+    const pct = total ? (done/total)*100 : 0;
+    const pctC = total ? ((done+active)/total)*100 : 0;
+    $("progressFillActive").style.width = pctC+"%";
+    $("progressFill").style.width       = pct+"%";
+    $("progressCount").textContent = done+" / "+total;
+    $("progressPct").textContent   = Math.round(pct)+"%";
 
-    const stamp = $("stamp");
-    if (done === total && total > 0) { stamp.textContent = "complete"; stamp.classList.add("complete"); }
-    else                              { stamp.textContent = "in progress"; stamp.classList.remove("complete"); }
+    const st = $("stamp");
+    if (done===total && total>0) { st.textContent="complete"; st.classList.add("complete"); }
+    else                          { st.textContent="in progress"; st.classList.remove("complete"); }
 
-    $("metaOperator").textContent = operator || "—";
-    $("docDate").textContent = new Date().toLocaleDateString("en-GB", {
-      day: "2-digit", month: "short", year: "numeric"
-    }).toUpperCase().replace(/ /g, "·");
-
+    $("metaOperator").textContent = operator||"—";
     renderCrew();
   }
 
-  function ensureOperator() {
-    if (!operator.trim()) { showModal(); return false; }
-    return true;
-  }
+  function ensureOp() { if(!operator.trim()){showModal();return false;} return true; }
 
-  // Toggle yourself on/off the workers list for a task
-  async function toggleWorker(taskId) {
-    const e = state[taskId] || {};
-    const workers = Array.isArray(e.workers) ? [...e.workers] : [];
-    const idx = workers.indexOf(operator);
-    if (idx === -1) workers.push(operator);
-    else            workers.splice(idx, 1);
-    state[taskId] = { ...e, workers };
+  async function toggleWorker(tid) {
+    const e=taskStates[tid]||{};
+    const w=Array.isArray(e.workers)?[...e.workers]:[];
+    const i=w.indexOf(operator); if(i===-1) w.push(operator); else w.splice(i,1);
+    taskStates[tid]={...e,workers:w};
     render(); await save();
   }
 
-  // Toggle done (right-click / long-press)
-  async function toggleDone(taskId) {
-    const e = state[taskId] || {};
-    if (e.done) {
-      // Undo done — restore to empty
-      state[taskId] = { done: false, workers: [] };
-    } else {
-      // Mark done — record who completed it, clear workers
-      state[taskId] = { done: true, by: operator, at: Date.now(), workers: [] };
-    }
+  async function toggleDone(tid) {
+    const e=taskStates[tid]||{};
+    taskStates[tid]=e.done?{done:false,workers:[]}:{done:true,by:operator,at:Date.now(),workers:[]};
     render(); await save();
   }
 
-  // ---------- Persistence ----------
+  // ── Persistence ────────────────────────────────────
   const BIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
 
   async function load() {
-    setConn("syncing", "Loading");
+    setConn("syncing","Loading");
     try {
-      const r = await fetch(BIN_URL + "/latest", { headers: { "X-Master-Key": JSONBIN_KEY } });
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      const data = await r.json();
-      state = (data.record && data.record.tasks) || {};
-      setConn("live", "Live · synced");
-      $("lastSync").textContent = "synced " + fmtTime(Date.now());
+      const r = await fetch(BIN_URL+"/latest",{headers:{"X-Master-Key":JSONBIN_KEY}});
+      if (!r.ok) throw new Error("HTTP "+r.status);
+      const rec = (await r.json()).record || {};
+
+      // Version check — wipe task states if sheet definition changed
+      taskStates   = rec.version===SHEET_VERSION ? (rec.taskStates||{}) : {};
+      dynamicTasks = rec.dynamicTasks || [];
+      window._extraFixed   = rec.extraFixed   || [];
+      window._removedFixed = rec.removedFixed || {};
+
+      // Apply extra/removed to fixed sections in memory
+      applyFixedOverrides();
+
+      // Date / label — only update fields if NOT currently editing (don't clobber user input)
+      if (!editMode) {
+        $("fieldDate").value  = rec.date  || "05·MAY·2026";
+        $("fieldLabel").value = rec.label || "Test Day Plan";
+      }
+
+      setConn("live","Live · synced");
+      $("lastSync").textContent = "synced "+fmtTime(Date.now());
       render();
-    } catch(e) { console.error(e); setConn("offline", "Offline"); }
+    } catch(e) { console.error(e); setConn("offline","Offline"); }
   }
 
-  let saveTimer = null;
+  function applyFixedOverrides() {
+    // Re-inject added fixed tasks and remove deleted ones
+    const extras  = window._extraFixed   || [];
+    const removed = window._removedFixed || {};
+    FIXED_SECTIONS.forEach(sec => {
+      if (sec.dynamic) return;
+      // Strip any previously injected extras then re-apply
+      sec.tasks = sec.tasks.filter(t => !t.id.startsWith("fix_"));
+      extras.filter(x=>x.secId===sec.id).forEach(x=>sec.tasks.push(x.task));
+      sec.tasks = sec.tasks.filter(t => !removed[t.id]);
+    });
+  }
+
+  let saveTimer=null;
+  function scheduleSave() { clearTimeout(saveTimer); saveTimer=setTimeout(save,400); }
+
   async function save() {
-    setConn("syncing", "Saving");
+    setConn("syncing","Saving");
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(async () => {
-      try {
-        const r = await fetch(BIN_URL, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json", "X-Master-Key": JSONBIN_KEY },
-          body: JSON.stringify({ tasks: state, updated: Date.now() })
-        });
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        setConn("live", "Live · synced");
-        $("lastSync").textContent = "synced " + fmtTime(Date.now());
-      } catch(e) { console.error(e); setConn("offline", "Save failed"); }
-    }, 400);
+    const payload = {
+      version:      SHEET_VERSION,
+      taskStates,
+      dynamicTasks,
+      extraFixed:   window._extraFixed   || [],
+      removedFixed: window._removedFixed || {},
+      date:         $("fieldDate").value,
+      label:        $("fieldLabel").value,
+      updated:      Date.now()
+    };
+    try {
+      const r = await fetch(BIN_URL,{
+        method:"PUT",
+        headers:{"Content-Type":"application/json","X-Master-Key":JSONBIN_KEY},
+        body:JSON.stringify(payload)
+      });
+      if (!r.ok) throw new Error("HTTP "+r.status);
+      setConn("live","Live · synced");
+      $("lastSync").textContent = "synced "+fmtTime(Date.now());
+    } catch(e) { console.error(e); setConn("offline","Save failed"); }
   }
 
-  // Polling — 60s, pauses when tab hidden, refreshes on focus
-  setInterval(() => { if (!document.hidden) load(); }, 60000);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+  // Polling — 60s, tab-aware
+  setInterval(()=>{ if(!document.hidden) load(); },60000);
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) load(); });
 
-  // ---------- Name picker modal ----------
-  const grid = $("nameGrid");
+  // ── Name picker ────────────────────────────────────
   TEAM.forEach(name => {
-    const btn = document.createElement("button");
-    btn.className = "name-btn";
-    btn.textContent = name;
-    btn.addEventListener("click", () => selectOperator(name));
-    grid.appendChild(btn);
+    const btn=document.createElement("button");
+    btn.className="name-btn"; btn.textContent=name;
+    btn.addEventListener("click",()=>selectOp(name));
+    $("nameGrid").appendChild(btn);
   });
 
-  function selectOperator(name) {
-    operator = name;
-    localStorage.setItem("maris_operator", name);
-    $("metaOperator").textContent = name;
-    $("footerName").textContent = name;
-    const b = $("modalBackdrop");
-    b.style.opacity = "0";
-    setTimeout(() => b.classList.add("hidden"), 250);
-    render(); // re-render so crew panel highlights "me"
+  function selectOp(name) {
+    operator=name;
+    localStorage.setItem("maris_operator",name);
+    $("metaOperator").textContent=name;
+    $("footerName").textContent=name;
+    const b=$("modalBackdrop");
+    b.style.opacity="0"; setTimeout(()=>b.classList.add("hidden"),250);
+    render();
   }
-
   function showModal() {
-    const b = $("modalBackdrop");
-    b.classList.remove("hidden");
-    b.style.opacity = "0";
-    requestAnimationFrame(() => { b.style.opacity = "1"; });
+    const b=$("modalBackdrop");
+    b.classList.remove("hidden"); b.style.opacity="0";
+    requestAnimationFrame(()=>{ b.style.opacity="1"; });
   }
 
-  $("switchUserBtn").addEventListener("click", showModal);
-  if (!operator) { showModal(); }
-  else { $("modalBackdrop").classList.add("hidden"); $("footerName").textContent = operator; }
+  $("switchUserBtn").addEventListener("click",showModal);
+  if(!operator){showModal();}
+  else{ $("modalBackdrop").classList.add("hidden"); $("footerName").textContent=operator; }
 
-  $("refreshBtn").addEventListener("click", load);
-  $("resetBtn").addEventListener("click", async () => {
-    if (!confirm("Reset all tasks for everyone?")) return;
-    state = {}; render(); await save();
+  $("refreshBtn").addEventListener("click",load);
+  $("resetBtn").addEventListener("click",async()=>{
+    if(!confirm("Reset all task states for everyone? (Task list and sheet info are kept)")) return;
+    taskStates={}; render(); await save();
   });
+
+  // Init — set fields to readonly until edit mode
+  $("fieldDate").setAttribute("readonly","");
+  $("fieldLabel").setAttribute("readonly","");
 
   render();
   load();
 </script>
-
 </body>
 </html>
