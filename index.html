@@ -182,9 +182,30 @@
   .worker-chip:nth-child(2){animation-delay:0.4s} .worker-chip:nth-child(3){animation-delay:0.8s}
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.5} }
 
-  /* Long-press visual feedback */
-  li.task.pressing { background: rgba(244,208,63,0.08); }
-  li.task.pressing .check-box { border-color: var(--yellow); }
+  /* Swipe to done / undo */
+  li.task { overflow:hidden; }
+  .swipe-bg-right {
+    position:absolute; inset:0; left:0;
+    background:var(--yellow);
+    display:flex; align-items:center; padding-left:20px;
+    font-family:'JetBrains Mono',monospace; font-size:11px;
+    font-weight:700; letter-spacing:0.15em; text-transform:uppercase;
+    color:var(--bg); pointer-events:none; opacity:0;
+  }
+  .swipe-bg-left {
+    position:absolute; inset:0; right:0;
+    background:var(--surface-2);
+    display:flex; align-items:center; justify-content:flex-end; padding-right:20px;
+    font-family:'JetBrains Mono',monospace; font-size:11px;
+    font-weight:700; letter-spacing:0.15em; text-transform:uppercase;
+    color:var(--red); border-left:1px solid var(--red); pointer-events:none; opacity:0;
+  }
+  .task-inner {
+    display:flex; align-items:flex-start; gap:16px;
+    flex:1; min-width:0;
+    will-change:transform;
+    transition:transform 0.15s ease;
+  }
   .remove-task-btn { display:none; flex-shrink:0; background:transparent; border:1px solid var(--rule); color:var(--ink-faint); font-family:'JetBrains Mono',monospace; font-size:12px; width:26px; height:26px; cursor:pointer; align-items:center; justify-content:center; margin-top:1px; transition:all 0.15s; }
   .sheet.editing .remove-task-btn { display:flex; }
   .remove-task-btn:hover { border-color:var(--red); color:var(--red); }
@@ -357,7 +378,9 @@
   </div>
 
   <div class="hint-bar">
-    <span><span class="hint-key">CLICK</span> claim / unclaim task</span>
+    <span><span class="hint-key">TAP</span> claim / unclaim</span>
+    <span><span class="hint-key">SWIPE RIGHT</span> mark done</span>
+    <span><span class="hint-key">SWIPE LEFT</span> undo / unclaim</span>
     <span><span class="hint-key">HOLD</span> or <span class="hint-key">RIGHT CLICK</span> mark done</span>
   </div>
 
@@ -527,13 +550,17 @@
         else if (isActive)  workerHtml = `<div class="worker-chips">${workers.map(w=>`<span class="worker-chip">${w}</span>`).join("")}</div>`;
 
         li.innerHTML = `
-          <div class="check-box"></div>
-          <div class="task-text">${task.text}</div>
-          <div class="task-meta">
-            <span class="task-tag">${task.tag}</span>
-            ${workerHtml}
-          </div>
-          <button class="remove-task-btn" data-id="${task.id}" title="Remove task">✕</button>`;
+          <div class="swipe-bg-right" data-swipe-bg="right">✓ done</div>
+          <div class="swipe-bg-left"  data-swipe-bg="left">✕ undo</div>
+          <div class="task-inner">
+            <div class="check-box"></div>
+            <div class="task-text">${task.text}</div>
+            <div class="task-meta">
+              <span class="task-tag">${task.tag}</span>
+              ${workerHtml}
+            </div>
+            <button class="remove-task-btn" data-id="${task.id}" title="Remove task">✕</button>
+          </div>`;
 
         // Remove button
         li.querySelector(".remove-task-btn").addEventListener("click", async ev => {
@@ -541,7 +568,6 @@
           if (sec.dynamic) {
             dynamicTasks = dynamicTasks.filter(t => t.id !== task.id);
           } else {
-            // For fixed sections: we store a "removed" override in the bin
             if (!window._removedFixed) window._removedFixed = {};
             window._removedFixed[task.id] = true;
           }
@@ -551,49 +577,120 @@
 
         // Task interactions — disabled in edit mode
         if (!editMode) {
-          // ── Unified pointer events (works on Android, iOS, desktop) ──
-          let pt; let lpf = false;
+          const inner   = li.querySelector(".task-inner");
+          const bgRight = li.querySelector("[data-swipe-bg='right']");
+          const bgLeft  = li.querySelector("[data-swipe-bg='left']");
+
+          const SWIPE_THRESHOLD = 72; // px needed to trigger action
           let startX = 0, startY = 0;
+          let deltaX = 0;
+          let isSwiping = false;
+          let swipeAxis = null; // "x" | "y" | null
 
-          li.addEventListener("pointerdown", e => {
-            if (e.button && e.button !== 0) return; // ignore right/middle mouse
-            lpf = false;
-            startX = e.clientX; startY = e.clientY;
-            li.classList.add("pressing");
-            pt = setTimeout(() => {
-              lpf = true;
-              li.classList.remove("pressing");
-              if (ensureOp()) toggleDone(task.id);
-            }, 600);
-          });
+          function onStart(clientX, clientY) {
+            startX = clientX; startY = clientY;
+            deltaX = 0; isSwiping = true; swipeAxis = null;
+            inner.style.transition = "none";
+          }
 
-          li.addEventListener("pointermove", e => {
-            // Cancel only if finger moved more than 10px (forgives natural wobble)
-            const dx = e.clientX - startX, dy = e.clientY - startY;
-            if (Math.sqrt(dx*dx + dy*dy) > 10) {
-              clearTimeout(pt); li.classList.remove("pressing");
+          function onMove(clientX, clientY) {
+            if (!isSwiping) return;
+            const dx = clientX - startX;
+            const dy = clientY - startY;
+
+            // Determine axis on first significant movement
+            if (!swipeAxis && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
+              swipeAxis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
             }
+            if (swipeAxis !== "x") return; // let vertical scroll through
+
+            deltaX = dx;
+            inner.style.transform = `translateX(${deltaX}px)`;
+
+            // Show background hints
+            const pct = Math.min(Math.abs(deltaX) / SWIPE_THRESHOLD, 1);
+            if (deltaX > 0) {
+              bgRight.style.opacity = pct;
+              bgLeft.style.opacity  = 0;
+            } else {
+              bgLeft.style.opacity  = pct;
+              bgRight.style.opacity = 0;
+            }
+          }
+
+          function onEnd() {
+            if (!isSwiping) return;
+            isSwiping = false;
+
+            // Snap back
+            inner.style.transition = "transform 0.2s ease";
+            inner.style.transform  = "translateX(0)";
+            bgRight.style.opacity  = 0;
+            bgLeft.style.opacity   = 0;
+
+            if (swipeAxis !== "x") return;
+
+            if (deltaX >= SWIPE_THRESHOLD) {
+              // Swipe right → mark done (or undo if already done)
+              if (!ensureOp()) return;
+              toggleDone(task.id);
+            } else if (deltaX <= -SWIPE_THRESHOLD) {
+              // Swipe left → unclaim / remove from workers
+              if (!ensureOp()) return;
+              if (isDone) {
+                toggleDone(task.id); // undo done
+              } else {
+                // Remove self from workers
+                const e = taskStates[task.id] || {};
+                const w = (e.workers || []).filter(n => n !== operator);
+                taskStates[task.id] = { ...e, workers: w };
+                render(); scheduleSave();
+              }
+            }
+          }
+
+          // Touch events (mobile) — swipe to act, long-press as backup
+          let pressTimer = null;
+
+          li.addEventListener("touchstart", e => {
+            onStart(e.touches[0].clientX, e.touches[0].clientY);
+            // Start long-press timer as backup
+            pressTimer = setTimeout(() => {
+              // Only fire if not swiping
+              if (Math.abs(deltaX) < 10) {
+                onEnd(); // reset swipe state cleanly
+                if (ensureOp()) toggleDone(task.id);
+              }
+            }, 600);
+          }, { passive: true });
+
+          li.addEventListener("touchmove", e => {
+            clearTimeout(pressTimer); // moved = not a long press
+            onMove(e.touches[0].clientX, e.touches[0].clientY);
+            if (swipeAxis === "x") e.preventDefault();
+          }, { passive: false });
+
+          li.addEventListener("touchend",    () => { clearTimeout(pressTimer); onEnd(); });
+          li.addEventListener("touchcancel", () => { clearTimeout(pressTimer); onEnd(); });
+
+          // Mouse events (desktop) — keep click for desktop users
+          li.addEventListener("pointerdown", e => {
+            if (e.pointerType === "touch") return; // handled by touch events
+            if (e.button !== 0) return;
+            startX = e.clientX; startY = e.clientY;
           });
 
-          li.addEventListener("pointerup", () => {
-            clearTimeout(pt); li.classList.remove("pressing");
-          });
-
-          li.addEventListener("pointercancel", () => {
-            clearTimeout(pt); li.classList.remove("pressing");
-          });
-
-          // Right-click on desktop — prevent default context menu, mark done
-          // On Android this also fires after long press but lpf flag stops double-fire
+          // Right-click = mark done on desktop
           li.addEventListener("contextmenu", e => {
             e.preventDefault();
-            if (lpf) return; // already handled by long-press timer
             if (!ensureOp()) return;
             toggleDone(task.id);
           });
 
+          // Regular tap/click = claim / unclaim
           li.addEventListener("click", e => {
-            if (lpf) { lpf = false; e.stopImmediatePropagation(); return; }
+            // Ignore if it was actually a swipe
+            if (Math.abs(e.clientX - startX) > 8) return;
             if (!ensureOp()) return;
             if (isDone) return;
             toggleWorker(task.id);
