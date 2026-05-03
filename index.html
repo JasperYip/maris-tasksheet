@@ -151,7 +151,7 @@
   .sec-time { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--ink-faint); letter-spacing:0.12em; text-transform:uppercase; margin-left:auto; padding:4px 8px; border:1px solid var(--rule); }
 
   ul.tasks { list-style:none; padding:0; margin:0; }
-  li.task { display:flex; align-items:flex-start; gap:16px; padding:14px 6px; border-top:1px solid var(--rule); cursor:pointer; transition:background 0.15s ease,padding-left 0.15s ease; position:relative; user-select:none; -webkit-user-select:none; }
+  li.task { display:flex; align-items:flex-start; gap:16px; padding:14px 6px; border-top:1px solid var(--rule); cursor:pointer; transition:background 0.15s ease,padding-left 0.15s ease; position:relative; user-select:none; -webkit-user-select:none; touch-action:manipulation; }
   li.task:first-child { border-top:none; }
 
   /* Normal hover only when NOT in edit mode */
@@ -182,7 +182,9 @@
   .worker-chip:nth-child(2){animation-delay:0.4s} .worker-chip:nth-child(3){animation-delay:0.8s}
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.5} }
 
-  /* Remove task button — only visible in edit mode */
+  /* Long-press visual feedback */
+  li.task.pressing { background: rgba(244,208,63,0.08); }
+  li.task.pressing .check-box { border-color: var(--yellow); }
   .remove-task-btn { display:none; flex-shrink:0; background:transparent; border:1px solid var(--rule); color:var(--ink-faint); font-family:'JetBrains Mono',monospace; font-size:12px; width:26px; height:26px; cursor:pointer; align-items:center; justify-content:center; margin-top:1px; transition:all 0.15s; }
   .sheet.editing .remove-task-btn { display:flex; }
   .remove-task-btn:hover { border-color:var(--red); color:var(--red); }
@@ -222,17 +224,78 @@
   .name-btn.selected { border-color:var(--yellow); color:var(--yellow); background:rgba(244,208,63,0.06); }
   .name-btn.selected::before { transform:scaleY(1); }
 
+  /* ── Mobile ── */
   @media (max-width:700px) {
-    header,main,footer,.progress-wrap,.status-bar,.crew-panel,.hint-bar { padding-left:18px; padding-right:18px; }
-    .stamp { bottom:70px; right:18px; font-size:9px; padding:6px 10px; }
+    body { padding: 12px 8px 60px; }
+
+    header,main,footer,.progress-wrap,.status-bar,.crew-panel,.hint-bar { padding-left:16px; padding-right:16px; }
+
+    /* Header */
+    header { padding: 20px 16px 16px; }
+
+    /* Stamp — move below h1 instead of absolute */
+    .stamp {
+      position: static;
+      display: inline-block;
+      transform: rotate(-2deg);
+      margin: 10px 0 0;
+      font-size: 9px;
+      padding: 5px 10px;
+    }
+
+    /* Corner mark — hide on mobile */
     .corner-mark { display:none; }
-    .edit-mode-btn { top:12px; right:12px; }
-    .task-meta { padding-left:0; border-left:none; align-items:flex-start; flex-direction:row; width:100%; gap:12px; min-width:0; }
-    li.task { flex-wrap:wrap; }
-    .meta-row { flex-direction:column; gap:6px; }
-    .doc-bar { gap:10px; }
-    .add-task-row { flex-wrap:wrap; }
+
+    /* Edit button — smaller, doesn't overlap */
+    .edit-mode-btn { top:12px; right:12px; font-size:9px; padding:5px 10px; }
+
+    /* Doc bar wraps tightly */
+    .doc-bar { gap:8px; flex-wrap:wrap; }
+
+    /* Meta row stacks */
+    .meta-row { flex-direction:column; gap:6px; font-size:10px; }
+
+    /* Crew panel — smaller chips */
+    .crew-panel { padding:10px 16px; gap:6px; }
+    .crew-chip { font-size:9px; padding:4px 8px; }
+    .crew-label { font-size:8px; }
+
+    /* Hint bar — slightly bigger, easier to read */
+    .hint-bar { font-size:10px; gap:12px; padding:10px 16px; flex-wrap:wrap; }
+    .hint-key { font-size:9px; padding:2px 6px; }
+
+    /* Progress — don't let label squeeze the bar */
+    .progress-wrap { gap:10px; padding:14px 16px; }
+    .progress-label { min-width:80px; font-size:11px; }
+    .progress-label .pct { margin-left:4px; }
+
+    /* Tasks — full width layout */
+    li.task { flex-wrap:wrap; padding:12px 4px; gap:12px; }
+    .task-text { font-size:15px; }
+    .task-meta {
+      padding-left:0; border-left:none;
+      align-items:flex-start; flex-direction:row;
+      width:100%; gap:10px; min-width:0;
+    }
+
+    /* Add task row */
+    .add-task-row { flex-wrap:wrap; gap:6px; }
     .add-task-tag-input { width:80px; }
+
+    /* Footer */
+    footer { padding:14px 16px; gap:10px; }
+
+    /* Modal — tighter on small screens */
+    .modal { padding:24px; }
+    .modal-title { font-size:18px; }
+    .name-grid { gap:8px; }
+    .name-btn { padding:12px 14px; font-size:14px; }
+  }
+
+  /* Extra small phones */
+  @media (max-width:380px) {
+    h1 { font-size:32px; }
+    .name-grid { grid-template-columns:1fr; }
   }
 </style>
 </head>
@@ -490,8 +553,16 @@
           li.addEventListener("click", () => { if (!ensureOp()) return; if (isDone) return; toggleWorker(task.id); });
           li.addEventListener("contextmenu", ev => { ev.preventDefault(); if (!ensureOp()) return; toggleDone(task.id); });
           let pt; let lpf=false;
-          function sp(){ lpf=false; pt=setTimeout(()=>{ lpf=true; if(ensureOp()) toggleDone(task.id); },600); }
-          function cp(){ clearTimeout(pt); }
+          function sp(){
+            lpf=false;
+            li.classList.add("pressing");
+            pt=setTimeout(()=>{
+              lpf=true;
+              li.classList.remove("pressing");
+              if(ensureOp()) toggleDone(task.id);
+            },600);
+          }
+          function cp(){ clearTimeout(pt); li.classList.remove("pressing"); }
           li.addEventListener("mousedown", e=>{ if(e.button===0) sp(); });
           li.addEventListener("mouseup", cp); li.addEventListener("mouseleave", cp);
           li.addEventListener("click", e=>{ if(lpf){lpf=false;e.stopImmediatePropagation();} },true);
