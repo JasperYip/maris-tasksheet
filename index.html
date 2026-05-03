@@ -763,18 +763,27 @@
     const local      = readLocal();
     const hasPending = localStorage.getItem(LS_PENDING) === "1";
 
+    // Always update status immediately so it never stays on "Initializing"
+    setConn("syncing", "Loading");
+
     // Show local state instantly while we check the cloud
     if (local && !force) {
       applyRecord(local);
       render();
-      if (hasPending) {
-        setConn("syncing","Syncing…");
-      }
     }
 
+    // Safety timeout — if fetch hangs for 10s, show offline
+    const timeoutId = setTimeout(() => {
+      setConn("offline", "Request timed out");
+    }, 10000);
+
     try {
-      const r = await fetch(BIN_URL+"/latest",{headers:{"X-Master-Key":JSONBIN_KEY}});
-      if (!r.ok) throw new Error("HTTP "+r.status);
+      const r = await fetch(BIN_URL+"/latest", {
+        headers: { "X-Master-Key": JSONBIN_KEY },
+        signal: AbortSignal.timeout ? AbortSignal.timeout(9000) : undefined
+      });
+      clearTimeout(timeoutId);
+      if (!r.ok) throw new Error("HTTP " + r.status);
       const remote = (await r.json()).record || {};
 
       const localTs  = local  ? (local.updated  || 0) : 0;
@@ -784,10 +793,8 @@
       const useLocal = !force && hasPending && localTs >= remoteTs;
 
       if (useLocal) {
-        // Already rendered local above — just push it to cloud
         await syncToCloud();
       } else {
-        // Cloud is authoritative — apply and update localStorage
         applyRecord(remote);
         try {
           localStorage.setItem(LS_KEY, JSON.stringify(remote));
@@ -798,9 +805,10 @@
         render();
       }
     } catch(e) {
-      console.error("Cloud load failed:", e);
-      if (!local) setConn("offline","Offline");
-      else        setConn("offline","Offline — showing local data");
+      clearTimeout(timeoutId);
+      console.error("Cloud load failed:", e.message);
+      if (!local) setConn("offline", "Offline — check console");
+      else        setConn("offline", "Offline — showing local data");
     }
   }
 
