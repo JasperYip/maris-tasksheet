@@ -53,7 +53,7 @@
   header::before { bottom:12px; left:12px; border-right:none; border-top:none; }
   header::after  { bottom:12px; right:12px; border-left:none; border-top:none; }
 
-  .corner-mark { position:absolute; top:24px; right:28px; height:38px; width:auto; opacity:0.85; filter:drop-shadow(0 0 12px rgba(244,208,63,0.15)); pointer-events:none; z-index:2; }
+  .corner-mark { position:absolute; top:24px; right:90px; height:38px; width:auto; opacity:0.85; filter:drop-shadow(0 0 12px rgba(244,208,63,0.15)); pointer-events:none; z-index:2; }
 
   /* Edit mode button — sits top-right, above corner mark */
   .edit-mode-btn {
@@ -219,6 +219,8 @@
   .name-btn::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--yellow); transform:scaleY(0); transition:transform 0.15s ease; }
   .name-btn:hover { border-color:var(--yellow); background:rgba(244,208,63,0.06); color:var(--yellow); padding-left:20px; }
   .name-btn:hover::before { transform:scaleY(1); }
+  .name-btn.selected { border-color:var(--yellow); color:var(--yellow); background:rgba(244,208,63,0.06); }
+  .name-btn.selected::before { transform:scaleY(1); }
 
   @media (max-width:700px) {
     header,main,footer,.progress-wrap,.status-bar,.crew-panel,.hint-bar { padding-left:18px; padding-right:18px; }
@@ -237,7 +239,7 @@
 <body>
 
 <!-- Name picker modal -->
-<div class="modal-backdrop" id="modalBackdrop">
+<div class="modal-backdrop hidden" id="modalBackdrop">
   <div class="modal">
     <img src="maris_glider.png" alt="" class="modal-glider" />
     <div class="modal-title">Who are you?</div>
@@ -566,15 +568,15 @@
   }
 
   // ── Persistence ────────────────────────────────────
-  const BIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
+  const BIN_URL    = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
+  const LS_KEY     = "maris_sheet_v2";       // localStorage key
+  const LS_PENDING = "maris_pending_v2";     // flag: do we have unsynced local data?
 
-  // Tracks whether local state is ahead of what's saved
-  let isDirty    = false;
   let isSaving   = false;
-  let saveTimer  = null;
-  let lastLoadTs = 0;  // timestamp of last successful load
+  let saveQueued = false;
 
-  function buildPayload() {
+  // ── Build the full payload object ───────────────────
+  function buildPayload(ts) {
     return {
       version:      SHEET_VERSION,
       taskStates,
@@ -583,50 +585,38 @@
       removedFixed: window._removedFixed || {},
       date:         $("fieldDate").value,
       label:        $("fieldLabel").value,
-      updated:      Date.now()
+      updated:      ts || Date.now()
     };
   }
 
-  function markDirty() {
-    isDirty = true;
-    setConn("syncing", "Unsaved changes");
+  // ── Write to localStorage immediately (sync, zero latency) ──
+  function persistLocal() {
+    const payload = buildPayload();
+    try {
+      localStorage.setItem(LS_KEY,     JSON.stringify(payload));
+      localStorage.setItem(LS_PENDING, "1");  // mark as not yet synced to cloud
+    } catch(e) { console.warn("localStorage write failed:", e); }
   }
 
-  // ── Load ────────────────────────────────────────────
-  async function load(force=false) {
-    // Don't overwrite local unsaved changes unless forced
-    if (isDirty && !force) return;
-
-    setConn("syncing","Loading");
+  // ── Read from localStorage ───────────────────────────
+  function readLocal() {
     try {
-      const r = await fetch(BIN_URL+"/latest",{headers:{"X-Master-Key":JSONBIN_KEY}});
-      if (!r.ok) throw new Error("HTTP "+r.status);
-      const rec = (await r.json()).record || {};
+      const raw = localStorage.getItem(LS_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch(e) { return null; }
+  }
 
-      // If remote is older than our last save, don't clobber
-      if (rec.updated && rec.updated < lastLoadTs && !force) {
-        setConn("live","Live · synced"); return;
-      }
-
-      taskStates   = rec.version===SHEET_VERSION ? (rec.taskStates||{}) : {};
-      dynamicTasks = rec.dynamicTasks || [];
-      window._extraFixed   = rec.extraFixed   || [];
-      window._removedFixed = rec.removedFixed || {};
-      applyFixedOverrides();
-
-      if (!editMode) {
-        $("fieldDate").value  = rec.date  || "05·MAY·2026";
-        $("fieldLabel").value = rec.label || "Test Day Plan";
-      }
-
-      lastLoadTs = Date.now();
-      isDirty    = false;
-      setConn("live","Live · synced");
-      $("lastSync").textContent = "synced "+fmtTime(Date.now());
-      render();
-    } catch(e) {
-      console.error(e);
-      setConn("offline","Offline — changes saved locally");
+  // ── Apply a record object into live state ────────────
+  function applyRecord(rec) {
+    if (!rec) return;
+    taskStates   = rec.version===SHEET_VERSION ? (rec.taskStates||{}) : {};
+    dynamicTasks = rec.dynamicTasks || [];
+    window._extraFixed   = rec.extraFixed   || [];
+    window._removedFixed = rec.removedFixed || {};
+    applyFixedOverrides();
+    if (!editMode) {
+      $("fieldDate").value  = rec.date  || "05·MAY·2026";
+      $("fieldLabel").value = rec.label || "Test Day Plan";
     }
   }
 
@@ -641,32 +631,33 @@
     });
   }
 
-  // ── Save with queue + retry ──────────────────────────
-  // Only one PUT in-flight at a time. If a save is in progress when
-  // another is requested, we queue one more attempt after it finishes.
-  let saveQueued = false;
-
+  // ── scheduleSave — called on every user interaction ──
+  // Step 1: write to localStorage instantly (survives refresh immediately)
+  // Step 2: fire cloud sync on next tick — no delay
+  let syncDebounce = null;
   function scheduleSave() {
-    markDirty();
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(flushSave, 400);
+    persistLocal();                       // synchronous, instant
+    setConn("syncing","Saving…");
+    clearTimeout(syncDebounce);
+    syncDebounce = setTimeout(syncToCloud, 0);  // next tick — not delayed
   }
 
+  // Immediate save — used for edit mode exit, reset
   async function save() {
-    markDirty();
-    clearTimeout(saveTimer);
-    await flushSave();
+    persistLocal();
+    clearTimeout(syncDebounce);
+    await syncToCloud();
   }
 
-  async function flushSave() {
+  // ── Cloud sync with queue + retry ────────────────────
+  async function syncToCloud() {
     if (isSaving) { saveQueued = true; return; }
     isSaving = true;
-    setConn("syncing","Saving");
 
-    const payload = buildPayload();
-    const MAX_RETRIES = 3;
+    const payload    = buildPayload();
+    const MAX_RETRY  = 3;
 
-    for (let attempt=1; attempt<=MAX_RETRIES; attempt++) {
+    for (let attempt=1; attempt<=MAX_RETRY; attempt++) {
       try {
         const r = await fetch(BIN_URL, {
           method:"PUT",
@@ -675,47 +666,76 @@
         });
         if (!r.ok) throw new Error("HTTP "+r.status);
 
-        isDirty    = false;
-        lastLoadTs = Date.now();
+        // Success — clear the pending flag
+        localStorage.removeItem(LS_PENDING);
         setConn("live","Live · synced");
         $("lastSync").textContent = "synced "+fmtTime(Date.now());
-        break; // success
+        break;
 
       } catch(e) {
-        console.warn(`Save attempt ${attempt} failed:`, e);
-        if (attempt < MAX_RETRIES) {
-          await new Promise(res => setTimeout(res, 800 * attempt)); // back-off
+        console.warn(`Sync attempt ${attempt} failed:`, e.message);
+        if (attempt < MAX_RETRY) {
+          await new Promise(res => setTimeout(res, 600*attempt));
         } else {
-          setConn("offline","Save failed — will retry");
-          // Schedule a retry in 10s
-          setTimeout(flushSave, 10000);
+          setConn("offline","Offline — saved locally, will retry");
+          setTimeout(syncToCloud, 15000);   // retry in 15s
         }
       }
     }
 
     isSaving = false;
-    if (saveQueued) { saveQueued=false; await flushSave(); }
+    if (saveQueued) { saveQueued=false; syncToCloud(); }
   }
 
-  // ── Flush on page close ──────────────────────────────
-  // Uses sendBeacon so the request survives tab close
-  window.addEventListener("beforeunload", () => {
-    if (!isDirty) return;
-    const payload = JSON.stringify(buildPayload());
-    navigator.sendBeacon(
-      "https://api.jsonbin.io/v3/b/"+JSONBIN_BIN_ID,
-      new Blob([payload],{type:"application/json"})
-      // Note: sendBeacon can't set custom headers, so this is a best-effort
-      // fallback. It will return 401 on JSONBin but triggers the save attempt.
-      // A service worker could proxy this properly if needed in future.
-    );
-  });
+  // ── Load — localStorage first, then cloud ────────────
+  async function load(force=false) {
+    const local      = readLocal();
+    const hasPending = localStorage.getItem(LS_PENDING) === "1";
+
+    // Show local state instantly while we check the cloud
+    if (local && !force) {
+      applyRecord(local);
+      render();
+      if (hasPending) {
+        setConn("syncing","Syncing…");
+      }
+    }
+
+    try {
+      const r = await fetch(BIN_URL+"/latest",{headers:{"X-Master-Key":JSONBIN_KEY}});
+      if (!r.ok) throw new Error("HTTP "+r.status);
+      const remote = (await r.json()).record || {};
+
+      const localTs  = local  ? (local.updated  || 0) : 0;
+      const remoteTs = remote ? (remote.updated || 0) : 0;
+
+      // Local wins if: it has pending changes AND it's newer (or equal) to cloud
+      const useLocal = !force && hasPending && localTs >= remoteTs;
+
+      if (useLocal) {
+        // Already rendered local above — just push it to cloud
+        await syncToCloud();
+      } else {
+        // Cloud is authoritative — apply and update localStorage
+        applyRecord(remote);
+        try {
+          localStorage.setItem(LS_KEY, JSON.stringify(remote));
+          localStorage.removeItem(LS_PENDING);
+        } catch(e){}
+        setConn("live","Live · synced");
+        $("lastSync").textContent = "synced "+fmtTime(Date.now());
+        render();
+      }
+    } catch(e) {
+      console.error("Cloud load failed:", e);
+      if (!local) setConn("offline","Offline");
+      else        setConn("offline","Offline — showing local data");
+    }
+  }
 
   // ── Polling — 60s, tab-aware ─────────────────────────
-  // Don't poll if we have unsaved local changes
-  setInterval(()=>{ if(!document.hidden && !isDirty) load(); }, 60000);
-  // Refresh immediately when tab becomes visible — but only if nothing pending
-  document.addEventListener("visibilitychange",()=>{ if(!document.hidden && !isDirty) load(); });
+  setInterval(()=>{ if(!document.hidden) load(); }, 60000);
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) load(); });
 
   // ── Name picker ────────────────────────────────────
   TEAM.forEach(name => {
@@ -735,27 +755,41 @@
     render();
   }
   function showModal() {
-    const b=$("modalBackdrop");
-    b.classList.remove("hidden"); b.style.opacity="0";
-    requestAnimationFrame(()=>{ b.style.opacity="1"; });
+    const b = $("modalBackdrop");
+    b.style.transition = "none";
+    b.style.opacity = "0";
+    b.classList.remove("hidden");
+    // Highlight previously chosen name with CSS class
+    $("nameGrid").querySelectorAll(".name-btn").forEach(btn => {
+      btn.classList.toggle("selected", btn.textContent.trim() === operator);
+    });
+    requestAnimationFrame(() => {
+      b.style.transition = "opacity 0.25s ease";
+      b.style.opacity = "1";
+    });
   }
 
-  $("switchUserBtn").addEventListener("click",showModal);
-  if(!operator){showModal();}
-  else{ $("modalBackdrop").classList.add("hidden"); $("footerName").textContent=operator; }
+  $("switchUserBtn").addEventListener("click", showModal);
 
-  $("refreshBtn").addEventListener("click",load);
+  // Only show modal if no name saved — [ switch ] button handles changing later
+  $("footerName").textContent = operator || "—";
+  if (!operator) showModal();
+
+  $("refreshBtn").addEventListener("click",()=>load(true));  // force=true on manual refresh
   $("resetBtn").addEventListener("click",async()=>{
     if(!confirm("Reset all task states for everyone? (Task list and sheet info are kept)")) return;
     taskStates={}; render(); await save();
   });
 
-  // Init — set fields to readonly until edit mode
+  // Init — fields readonly until edit mode
   $("fieldDate").setAttribute("readonly","");
   $("fieldLabel").setAttribute("readonly","");
 
-  render();
-  load();
+  // On startup: show local state instantly while cloud loads in background
+  const localSnap = readLocal();
+  if (localSnap) { applyRecord(localSnap); render(); }
+  load();   // then reconcile with cloud
+
 </script>
 </body>
 </html>
