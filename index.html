@@ -16,6 +16,29 @@
     --yellow-dim: #8a7a1f; --green: #4caf7d; --red: #e05252;
     --grid: rgba(244,208,63,0.04);
   }
+
+  /* ── Light mode ── */
+  body.light {
+    --bg: #f0ede6; --surface: #faf8f3; --surface-2: #ede9e0;
+    --ink: #1a1a14; --ink-dim: #5a5648; --ink-faint: #a8a090;
+    --rule: #d4cfc4; --yellow: #c8970a; --yellow-bright: #e0a800;
+    --yellow-dim: #a07800; --green: #2e7d52; --red: #c0392b;
+    --grid: rgba(0,0,0,0.04);
+  }
+  body.light .progress-fill-active { background: repeating-linear-gradient(-45deg,#ccc9be 0 8px,#bab6aa 8px 16px); }
+  body.light li.task.active.mine .check-box { animation: glow-pulse-red-light 2s ease-in-out infinite; }
+  @keyframes glow-pulse-red-light { 0%,100%{box-shadow:0 0 8px rgba(192,57,43,0.25)} 50%{box-shadow:0 0 16px rgba(192,57,43,0.5)} }
+
+  /* Theme toggle button */
+  .theme-btn {
+    font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700;
+    letter-spacing:0.12em; text-transform:uppercase;
+    background:transparent; border:1px solid var(--rule);
+    color:var(--ink-faint); padding:5px 10px; cursor:pointer;
+    transition:all 0.15s ease; display:flex; align-items:center; gap:6px;
+  }
+  .theme-btn:hover { border-color:var(--yellow); color:var(--yellow); }
+  .theme-icon { font-size:12px; }
   * { box-sizing: border-box; }
   html,body { margin:0; padding:0; background:var(--bg); color:var(--ink); font-family:'Space Grotesk',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
   body { background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px); background-size:32px 32px; min-height:100vh; padding:32px 16px 80px; }
@@ -298,14 +321,20 @@
     .progress-label { min-width:80px; font-size:11px; }
     .progress-label .pct { margin-left:4px; }
 
-    /* Tasks — full width layout */
-    li.task { flex-wrap:wrap; padding:12px 4px; gap:12px; }
-    .task-text { font-size:15px; }
+    /* Tasks — give text maximum horizontal space */
+    li.task { flex-wrap:nowrap; padding:14px 4px; gap:10px; align-items:center; }
+    .task-text { font-size:15px; flex:1; min-width:0; }
+    /* Hide tag on mobile — saves significant space */
+    .task-tag { display:none; }
+    /* Meta shrinks to just the worker chips / by label */
     .task-meta {
-      padding-left:0; border-left:none;
-      align-items:flex-start; flex-direction:row;
-      width:100%; gap:10px; min-width:0;
+      padding-left:8px; border-left:1px solid var(--rule);
+      align-items:flex-end; flex-direction:column;
+      flex-shrink:0; min-width:0; gap:3px;
+      width:auto;
     }
+    .worker-chips { justify-content:flex-end; }
+    .remove-task-btn { flex-shrink:0; }
 
     /* Add task row */
     .add-task-row { flex-wrap:wrap; gap:6px; }
@@ -409,6 +438,7 @@
       <button class="switch-user" id="switchUserBtn">[ switch ]</button>
     </div>
     <div class="footer-actions">
+      <button class="theme-btn" id="themeBtn"><span class="theme-icon">☀</span><span id="themeBtnLabel">Light</span></button>
       <button class="btn" id="refreshBtn">Refresh</button>
       <button class="btn" id="resetBtn">Reset all</button>
     </div>
@@ -1069,7 +1099,20 @@
   $("footerName").textContent = operator || "—";
   if (!operator) showModal();
 
-  $("refreshBtn").addEventListener("click",()=>load(true));  // force=true on manual refresh
+  // ── Theme toggle ────────────────────────────────────
+  let isLight = localStorage.getItem("maris_theme") === "light";
+  function applyTheme() {
+    document.body.classList.toggle("light", isLight);
+    $("themeBtn").innerHTML = isLight
+      ? '<span class="theme-icon">☾</span><span id="themeBtnLabel">Dark</span>'
+      : '<span class="theme-icon">☀</span><span id="themeBtnLabel">Light</span>';
+  }
+  applyTheme();
+  $("themeBtn").addEventListener("click", () => {
+    isLight = !isLight;
+    localStorage.setItem("maris_theme", isLight ? "light" : "dark");
+    applyTheme();
+  });
   $("resetBtn").addEventListener("click",async()=>{
     if(!confirm("Reset all task states for everyone? (Task list and sheet info are kept)")) return;
     taskStates={}; render(); await save();
