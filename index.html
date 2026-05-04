@@ -414,7 +414,7 @@
 
   const TEAM = ["Alvaro","Bartol","Hussain","Ibrahim","James","Jasper","Kevin","Poojak"];
 
-  // Fixed sections — skeleton tasks are stored dynamically in bin
+  // Fixed sections — skeleton tasks are stored dynamically in Supabase
   const FIXED_SECTIONS = [
     { id:"01", title:"VBD", time:"flexible", tasks:[
       {id:"t1", text:"Torque the penetrators on the end cap",                         tag:"seal"},
@@ -507,6 +507,80 @@
     $(id).addEventListener("input", () => { if (editMode) scheduleSave(); });
     $(id).addEventListener("keydown", e => { if (e.key === "Enter") { e.target.blur(); } });
   });
+
+  // ── Surgical helpers — avoid full re-render on every tap ──────────
+
+  // Update just the progress bar and stamp
+  function renderProgress() {
+    let total=0, done=0, active=0;
+    getSections().forEach(sec => sec.tasks.forEach(task => {
+      total++;
+      const e = taskStates[task.id] || {};
+      const w = Array.isArray(e.workers) ? e.workers : [];
+      if (e.done) done++;
+      else if (w.length > 0) active++;
+    }));
+    const pct  = total ? (done/total)*100 : 0;
+    const pctC = total ? ((done+active)/total)*100 : 0;
+    $("progressFillActive").style.width = pctC+"%";
+    $("progressFill").style.width       = pct+"%";
+    $("progressCount").textContent = done+" / "+total;
+    $("progressPct").textContent   = Math.round(pct)+"%";
+    const st = $("stamp");
+    if (done===total && total>0) { st.textContent="complete"; st.classList.add("complete"); }
+    else                          { st.textContent="in progress"; st.classList.remove("complete"); }
+  }
+
+  // Update a single task <li> in-place — no DOM thrash, no flicker
+  function updateTaskInDOM(tid) {
+    const li = document.querySelector('li.task[data-id="'+tid+'"]');
+    if (!li) { render(); return; } // not found — fall back to full render
+
+    const e       = taskStates[tid] || {};
+    const workers = Array.isArray(e.workers) ? e.workers : [];
+    const isDone   = !!e.done;
+    const isActive = !isDone && workers.length > 0;
+
+    li.className = "task" + (isDone?" done":isActive?" active":"");
+
+    const meta = li.querySelector(".task-meta");
+    meta.querySelectorAll(".task-by, .worker-chips").forEach(el => el.remove());
+
+    if (isDone && e.by) {
+      const by = document.createElement("span");
+      by.className = "task-by";
+      by.textContent = "✓ " + e.by;
+      meta.appendChild(by);
+    } else if (isActive) {
+      const chips = document.createElement("div");
+      chips.className = "worker-chips";
+      workers.forEach(w => {
+        const chip = document.createElement("span");
+        chip.className = "worker-chip";
+        chip.textContent = w;
+        chips.appendChild(chip);
+      });
+      meta.appendChild(chips);
+    }
+
+    renderProgress();
+    renderCrew();
+  }
+
+  // Apply an incoming remote record — only re-renders tasks if NOT in edit mode
+  function applyRemoteUpdate(rec) {
+    applyRecord(rec);
+    cacheLocally(rec);
+    setConn("live", "Live · synced");
+    $("lastSync").textContent = "synced " + fmtTime(Date.now());
+    if (editMode) {
+      // Don't wipe the edit DOM — silently refresh progress and crew only
+      renderProgress();
+      renderCrew();
+    } else {
+      render();
+    }
+  }
 
   // ── Render ─────────────────────────────────────────
   function render() {
@@ -635,16 +709,16 @@
               if (!ensureOp()) return;
               toggleDone(task.id);
             } else if (deltaX <= -SWIPE_THRESHOLD) {
-              // Swipe left → unclaim / remove from workers
+              // Swipe left → unclaim / undo done
+              // Read fresh state — not the stale isDone closure from render time
               if (!ensureOp()) return;
-              if (isDone) {
+              const freshState = taskStates[task.id] || {};
+              if (freshState.done) {
                 toggleDone(task.id); // undo done
               } else {
-                // Remove self from workers
-                const e = taskStates[task.id] || {};
-                const w = (e.workers || []).filter(n => n !== operator);
-                taskStates[task.id] = { ...e, workers: w };
-                render(); scheduleSave();
+                const w = (freshState.workers || []).filter(n => n !== operator);
+                taskStates[task.id] = { ...freshState, workers: w };
+                updateTaskInDOM(task.id); scheduleSave();
               }
             }
           }
@@ -717,8 +791,8 @@
         if (sec.dynamic) {
           dynamicTasks = [...dynamicTasks, newTask];
         } else {
-          // Inject into the fixed section's task list in memory
-          sec.tasks.push(newTask);
+          // Store in _extraFixed — applyFixedOverrides() injects it on next render
+          // Do NOT push to sec.tasks directly as that mutates FIXED_SECTIONS
           if (!window._extraFixed) window._extraFixed = [];
           window._extraFixed.push({ secId: sec.id, task: newTask });
         }
@@ -755,18 +829,24 @@
     const w=Array.isArray(e.workers)?[...e.workers]:[];
     const i=w.indexOf(operator); if(i===-1) w.push(operator); else w.splice(i,1);
     taskStates[tid]={...e,workers:w};
-    render(); scheduleSave();
+    updateTaskInDOM(tid); scheduleSave(); // surgical — no full re-render
   }
 
   async function toggleDone(tid) {
     const e=taskStates[tid]||{};
     taskStates[tid]=e.done?{done:false,workers:[]}:{done:true,by:operator,at:Date.now(),workers:[]};
-    render(); scheduleSave();
+    updateTaskInDOM(tid); scheduleSave(); // surgical — no full re-render
   }
 
   // ── Persistence ────────────────────────────────────
   // ── Supabase client ─────────────────────────────────
-  const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  let db = null;
+  try {
+    db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  } catch(e) {
+    console.error("Supabase failed to init:", e);
+    setConn("offline", "Supabase unavailable — offline mode");
+  }
 
   // ── localStorage — offline fallback only ───────────
   const LS_KEY = "maris_offline_v3";
@@ -778,9 +858,10 @@
     catch(e) { return null; }
   }
 
-  let isSaving     = false;
-  let saveQueued   = false;
-  let syncDebounce = null;
+  let isSaving          = false;
+  let saveQueued        = false;
+  let syncDebounce      = null;
+  let pendingRemoteUpdate = null; // queued realtime update that arrived mid-save
 
   // ── Convert between app record and Supabase row ─────
   function rowToRecord(row) {
@@ -846,6 +927,7 @@
   }
 
   async function syncToCloud() {
+    if (!db) { setConn("offline","No database connection"); return; }
     if (isSaving) { saveQueued = true; return; }
     isSaving = true;
 
@@ -875,11 +957,17 @@
     }
 
     isSaving = false;
-    if (saveQueued) { saveQueued = false; syncToCloud(); }
+    if (saveQueued) {
+      saveQueued = false; syncToCloud();
+    } else if (pendingRemoteUpdate) {
+      const upd = pendingRemoteUpdate; pendingRemoteUpdate = null;
+      applyRemoteUpdate(upd);
+    }
   }
 
   // ── Load ────────────────────────────────────────────
-  async function load() {
+  async function load(force=false) {
+    if (!db) { setConn("offline","No database connection"); return; }
     setConn("syncing", "Loading");
     const { data, error } = await db
       .from("sheet")
@@ -911,13 +999,13 @@
       "postgres_changes",
       { event: "UPDATE", schema: "public", table: "sheet", filter: "id=eq.main" },
       payload => {
-        if (isSaving) return; // our own save is in flight, skip
         const incoming = rowToRecord(payload.new);
-        applyRecord(incoming);
-        cacheLocally(incoming);
-        setConn("live", "Live · synced");
-        $("lastSync").textContent = "synced " + fmtTime(Date.now());
-        render();
+        if (isSaving) {
+          // Queue it — apply after our save lands so we don't lose teammate changes
+          pendingRemoteUpdate = incoming;
+          return;
+        }
+        applyRemoteUpdate(incoming);
       }
     )
     .subscribe(status => {
@@ -926,9 +1014,9 @@
       if (status === "CHANNEL_ERROR") setConn("offline", "Connection error — retrying");
     });
 
-  // Fallback poll every 30s in case WebSocket drops silently
-  setInterval(() => { if (!document.hidden && !isSaving) load(); }, 30000);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+  // Fallback poll every 30s — skip if in edit mode to avoid wiping the DOM
+  setInterval(() => { if (!document.hidden && !isSaving && !editMode) load(); }, 30000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && !editMode) load(); });
 
   // ── Name picker ────────────────────────────────────
   TEAM.forEach(name => {
