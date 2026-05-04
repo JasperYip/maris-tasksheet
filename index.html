@@ -437,13 +437,13 @@
 
   // ── State ──────────────────────────────────────────
   let taskStates    = {};   // { taskId: { done, by, at, workers[] } }
-  let dynamicTasks  = [];   // [{id, text, tag}] stored in bin for section 03
+  let dynamicTasksMap = {}; // { sectionId: [{id,text,tag}] } — one list per dynamic section
   let editMode      = false;
   let operator      = localStorage.getItem("maris_operator") || "";
   const $           = id => document.getElementById(id);
 
   function getSections() {
-    return FIXED_SECTIONS.map(s => s.dynamic ? { ...s, tasks: dynamicTasks } : s);
+    return FIXED_SECTIONS.map(s => s.dynamic ? { ...s, tasks: dynamicTasksMap[s.id] || [] } : s);
   }
 
   function buildTaskSecMap() {
@@ -641,7 +641,8 @@
         li.querySelector(".remove-task-btn").addEventListener("click", async ev => {
           ev.stopPropagation();
           if (sec.dynamic) {
-            dynamicTasks = dynamicTasks.filter(t => t.id !== task.id);
+            const existing = dynamicTasksMap[sec.id] || [];
+            dynamicTasksMap = { ...dynamicTasksMap, [sec.id]: existing.filter(t => t.id !== task.id) };
           } else {
             if (!window._removedFixed) window._removedFixed = {};
             window._removedFixed[task.id] = true;
@@ -790,7 +791,8 @@
         const text = ti.value.trim(); if (!text) return;
         const newTask = { id: (sec.dynamic?"dyn_":"fix_"+sec.id+"_") + Date.now(), text, tag: tt.value.trim()||"misc" };
         if (sec.dynamic) {
-          dynamicTasks = [...dynamicTasks, newTask];
+          const existing = dynamicTasksMap[sec.id] || [];
+          dynamicTasksMap = { ...dynamicTasksMap, [sec.id]: [...existing, newTask] };
         } else {
           // Store in _extraFixed — applyFixedOverrides() injects it on next render
           // Do NOT push to sec.tasks directly as that mutates FIXED_SECTIONS
@@ -869,7 +871,7 @@
     return {
       version:      SHEET_VERSION,
       taskStates:   row.task_states   || {},
-      dynamicTasks: row.dynamic_tasks || [],
+      dynamicTasks: row.dynamic_tasks || {},
       extraFixed:   row.extra_fixed   || [],
       removedFixed: row.removed_fixed || {},
       date:         row.sheet_date    || "05·MAY·2026",
@@ -881,7 +883,7 @@
   function buildRow() {
     return {
       task_states:   taskStates,
-      dynamic_tasks: dynamicTasks,
+      dynamic_tasks: dynamicTasksMap,
       extra_fixed:   window._extraFixed   || [],
       removed_fixed: window._removedFixed || {},
       sheet_date:    $("fieldDate").value,
@@ -894,7 +896,7 @@
   function applyRecord(rec) {
     if (!rec) return;
     taskStates   = rec.version === SHEET_VERSION ? (rec.taskStates || {}) : {};
-    dynamicTasks = rec.dynamicTasks || [];
+    dynamicTasksMap = (rec.dynamicTasks && !Array.isArray(rec.dynamicTasks)) ? rec.dynamicTasks : {};
     window._extraFixed   = rec.extraFixed   || [];
     window._removedFixed = rec.removedFixed || {};
     applyFixedOverrides();
