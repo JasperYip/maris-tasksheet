@@ -168,6 +168,14 @@
   li.task.done .check-box::after { transform:scale(1); }
   li.task.active .check-box { border-color:var(--yellow); box-shadow:0 0 10px rgba(244,208,63,0.4); animation:glow-pulse 2s ease-in-out infinite; }
   li.task.active .check-box::after { content:"…"; font-size:11px; letter-spacing:-2px; color:var(--yellow); transform:scale(1); }
+
+  /* Mine = task I personally claimed — shown in red so I know it's on me */
+  li.task.active.mine { background: rgba(224,82,82,0.04); }
+  li.task.active.mine .check-box { border-color:var(--red); box-shadow:0 0 10px rgba(224,82,82,0.4); animation:glow-pulse-red 2s ease-in-out infinite; }
+  li.task.active.mine .check-box::after { color:var(--red); }
+  li.task.active.mine .task-text { color:var(--red); opacity:0.9; }
+  li.task.active.mine .worker-chip.is-me { background:var(--red); }
+  @keyframes glow-pulse-red { 0%,100%{box-shadow:0 0 8px rgba(224,82,82,0.3)} 50%{box-shadow:0 0 20px rgba(224,82,82,0.7)} }
   @keyframes glow-pulse { 0%,100%{box-shadow:0 0 8px rgba(244,208,63,0.3)} 50%{box-shadow:0 0 20px rgba(244,208,63,0.7)} }
 
   .task-text { flex:1; font-size:16px; line-height:1.45; color:var(--ink); transition:color 0.2s ease,opacity 0.2s ease; }
@@ -541,8 +549,9 @@
     const workers = Array.isArray(e.workers) ? e.workers : [];
     const isDone   = !!e.done;
     const isActive = !isDone && workers.length > 0;
+    const isMine   = isActive && workers.includes(operator);
 
-    li.className = "task" + (isDone?" done":isActive?" active":"");
+    li.className = "task" + (isDone?" done":isActive?" active":"") + (isMine?" mine":"");
 
     const meta = li.querySelector(".task-meta");
     meta.querySelectorAll(".task-by, .worker-chips").forEach(el => el.remove());
@@ -557,7 +566,7 @@
       chips.className = "worker-chips";
       workers.forEach(w => {
         const chip = document.createElement("span");
-        chip.className = "worker-chip";
+        chip.className = "worker-chip" + (w === operator ? " is-me" : "");
         chip.textContent = w;
         chips.appendChild(chip);
       });
@@ -617,12 +626,13 @@
         if (isDone) done++; else if (isActive) active++;
 
         const li = document.createElement("li");
-        li.className = "task" + (isDone?" done":isActive?" active":"");
+        const isMine = isActive && workers.includes(operator);
+        li.className = "task" + (isDone?" done":isActive?" active":"") + (isMine?" mine":"");
         li.dataset.id = task.id;
 
         let workerHtml = "";
         if (isDone && e.by) workerHtml = `<span class="task-by">✓ ${e.by}</span>`;
-        else if (isActive)  workerHtml = `<div class="worker-chips">${workers.map(w=>`<span class="worker-chip">${w}</span>`).join("")}</div>`;
+        else if (isActive)  workerHtml = `<div class="worker-chips">${workers.map(w=>`<span class="worker-chip${w===operator?" is-me":""}">${w}</span>`).join("")}</div>`;
 
         li.innerHTML = `
           <div class="swipe-bg-right" data-swipe-bg="right">✓ done</div>
