@@ -26,8 +26,7 @@
     --grid: rgba(0,0,0,0.04);
   }
   body.light .progress-fill-active { background: repeating-linear-gradient(-45deg,#ccc9be 0 8px,#bab6aa 8px 16px); }
-  body.light li.task.active.mine .check-box { animation: glow-pulse-red-light 2s ease-in-out infinite; }
-  @keyframes glow-pulse-red-light { 0%,100%{box-shadow:0 0 8px rgba(192,57,43,0.25)} 50%{box-shadow:0 0 16px rgba(192,57,43,0.5)} }
+
 
   /* Theme toggle button */
   .theme-btn {
@@ -53,7 +52,7 @@
   .dot { width:7px; height:7px; border-radius:50%; background:var(--ink-faint); transition:all 0.3s ease; }
   .dot.live { background:var(--yellow-bright); box-shadow:0 0 8px var(--yellow-bright); }
   .dot.offline { background:var(--red); }
-  .dot.syncing { background:var(--yellow); animation:pulse 1s infinite; }
+  .dot.syncing { background:var(--yellow); animation:pulse 1.5s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
   /* ── Crew panel ── */
@@ -65,7 +64,7 @@
   .crew-chip.me { background:rgba(244,208,63,0.06); border-color:var(--yellow); color:var(--yellow); }
   .crew-status-dot { width:6px; height:6px; border-radius:50%; background:var(--ink-faint); flex-shrink:0; }
   .crew-chip.available .crew-status-dot { background:var(--green); box-shadow:0 0 6px var(--green); }
-  .crew-chip.busy .crew-status-dot { background:var(--red); box-shadow:0 0 6px var(--red); animation:pulse 2s infinite; }
+  .crew-chip.busy .crew-status-dot { background:var(--red); animation:pulse 3s infinite; }
   .crew-chip.me .crew-status-dot { background:var(--yellow); box-shadow:0 0 6px var(--yellow); }
   .crew-tasks { font-size:9px; color:var(--red); letter-spacing:0.05em; }
   .crew-chip.me .crew-tasks { color:var(--yellow); }
@@ -189,17 +188,31 @@
   .check-box::after { content:"✓"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--bg); font-size:16px; font-weight:700; transform:scale(0); transition:transform 0.25s cubic-bezier(.5,1.6,.4,1); }
   li.task.done .check-box { background:var(--yellow); border-color:var(--yellow); }
   li.task.done .check-box::after { transform:scale(1); }
-  li.task.active .check-box { border-color:var(--yellow); box-shadow:0 0 10px rgba(244,208,63,0.4); animation:glow-pulse 2s ease-in-out infinite; }
+  li.task.active .check-box {
+    border-color:var(--yellow);
+    box-shadow: 0 0 6px rgba(244,208,63,0.3);
+    position:relative;
+  }
+  li.task.active .check-box::before {
+    content:"";
+    position:absolute; inset:-3px;
+    border:2px solid var(--yellow);
+    opacity:0;
+    animation: ring-pulse 2s ease-in-out infinite;
+    will-change: opacity;
+  }
+  @keyframes ring-pulse { 0%,100%{opacity:0} 50%{opacity:0.7} }
   li.task.active .check-box::after { content:"…"; font-size:11px; letter-spacing:-2px; color:var(--yellow); transform:scale(1); }
 
   /* Mine = task I personally claimed — shown in red so I know it's on me */
   li.task.active.mine { background: rgba(224,82,82,0.04); }
-  li.task.active.mine .check-box { border-color:var(--red); box-shadow:0 0 10px rgba(224,82,82,0.4); animation:glow-pulse-red 2s ease-in-out infinite; }
+  li.task.active.mine .check-box { border-color:var(--red); box-shadow:0 0 6px rgba(224,82,82,0.3); }
+  li.task.active.mine .check-box::before { border-color:var(--red); }
   li.task.active.mine .check-box::after { color:var(--red); }
   li.task.active.mine .task-text { color:var(--red); opacity:0.9; }
   li.task.active.mine .worker-chip.is-me { background:var(--red); }
-  @keyframes glow-pulse-red { 0%,100%{box-shadow:0 0 8px rgba(224,82,82,0.3)} 50%{box-shadow:0 0 20px rgba(224,82,82,0.7)} }
-  @keyframes glow-pulse { 0%,100%{box-shadow:0 0 8px rgba(244,208,63,0.3)} 50%{box-shadow:0 0 20px rgba(244,208,63,0.7)} }
+
+
 
   .task-text { flex:1; font-size:16px; line-height:1.45; color:var(--ink); transition:color 0.2s ease,opacity 0.2s ease; }
   li.task.done .task-text { color:var(--ink-faint); text-decoration:line-through; text-decoration-thickness:1.5px; text-decoration-color:var(--yellow); opacity:0.6; }
@@ -209,9 +222,8 @@
   .task-tag { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.12em; color:var(--ink-faint); text-transform:uppercase; }
   .task-by { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.1em; color:var(--yellow-dim); text-transform:uppercase; }
   .worker-chips { display:flex; flex-wrap:wrap; gap:3px; justify-content:flex-end; margin-top:2px; }
-  .worker-chip { font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:0.08em; text-transform:uppercase; color:var(--bg); background:var(--yellow); padding:2px 5px; animation:blink 2s step-end infinite; }
-  .worker-chip:nth-child(2){animation-delay:0.4s} .worker-chip:nth-child(3){animation-delay:0.8s}
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  .worker-chip { font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:0.08em; text-transform:uppercase; color:var(--bg); background:var(--yellow); padding:2px 5px; }
+
 
   /* Swipe to done / undo */
   li.task { overflow:hidden; }
