@@ -1028,7 +1028,7 @@
             window._removedFixed[task.id] = true;
           }
           delete taskStates[task.id];
-          render(); markLocalChange(); scheduleSave();
+          applyFixedOverrides(); render(); markLocalChange(); scheduleSave();
         });
 
         // Inline edit — text and tag inputs (only active in edit mode)
@@ -1258,7 +1258,7 @@
           window._extraFixed.push({ secId: sec.id, task: newTask });
         }
         ti.value=""; tt.value="";
-        render(); markLocalChange(); scheduleSave();
+        applyFixedOverrides(); render(); markLocalChange(); scheduleSave();
         const refocus = $(`ati_${sec.id}`); if(refocus) refocus.focus();
       };
       addRow.querySelector(`#atb_${sec.id}`).addEventListener("click", doAdd);
