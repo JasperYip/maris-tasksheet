@@ -900,27 +900,23 @@
     renderCrew();
   }
 
-  // Track when we last saved so we can ignore our own realtime echo
-  let lastSaveTs = 0;
+  // Track when we last made a local change
+  let localUpdatedTs = 0;
+  let lastSaveTs     = 0;
+  function markLocalChange() { localUpdatedTs = Date.now(); }
 
   // Apply an incoming remote record
   function applyRemoteUpdate(rec) {
-    // If this update arrived within 3s of our own save, it's our own echo — skip it
-    // This prevents the "drag reverts" bug where our save triggers a realtime event
-    // that overwrites the reordered DOM before the user sees it
-    if (Date.now() - lastSaveTs < 3000) return;
+    // Ignore if: we just saved (our own echo) OR our local data is newer
+    const recTs = rec.updated || 0;
+    if (Date.now() - lastSaveTs < 4000) return;    // echo window
+    if (recTs < localUpdatedTs) return;             // remote is stale vs our local edits
 
     applyRecord(rec);
     cacheLocally(rec);
     setConn("live", "Live · synced");
     $("lastSync").textContent = "synced " + fmtTime(Date.now());
-    if (editMode) {
-      renderProgress();
-      renderCrew();
-      render(); // always re-render in edit mode so order changes from others show up
-    } else {
-      render();
-    }
+    render();
   }
 
   // ── Render ─────────────────────────────────────────
@@ -992,7 +988,7 @@
             window._removedFixed[task.id] = true;
           }
           delete taskStates[task.id];
-          render(); scheduleSave();
+          render(); markLocalChange(); scheduleSave();
         });
 
         // Inline edit — text and tag inputs (only active in edit mode)
@@ -1146,13 +1142,13 @@
               window._sectionOrder[sec.id] = list.map(t => t.id);
             }
 
-            render(); scheduleSave();
-          };
+            render(); markLocalChange(); scheduleSave();
+          }; // end onUp
 
           handle.setPointerCapture(e.pointerId);
           document.addEventListener("pointermove", onMove);
           document.addEventListener("pointerup",   onUp);
-        });
+        }); // end pointerdown
 
         // Task interactions — disabled in edit mode
         if (!editMode) {
@@ -1303,7 +1299,7 @@
           window._extraFixed.push({ secId: sec.id, task: newTask });
         }
         ti.value=""; tt.value="";
-        render(); scheduleSave();
+        render(); markLocalChange(); scheduleSave();
         const refocus = $(`ati_${sec.id}`); if(refocus) refocus.focus();
       };
       addRow.querySelector(`#atb_${sec.id}`).addEventListener("click", doAdd);
@@ -1335,13 +1331,13 @@
     const w=Array.isArray(e.workers)?[...e.workers]:[];
     const i=w.indexOf(operator); if(i===-1) w.push(operator); else w.splice(i,1);
     taskStates[tid]={...e,workers:w};
-    updateTaskInDOM(tid); scheduleSave(); // surgical — no full re-render
+    markLocalChange(); updateTaskInDOM(tid); scheduleSave();
   }
 
   async function toggleDone(tid) {
     const e=taskStates[tid]||{};
     taskStates[tid]=e.done?{done:false,workers:[]}:{done:true,by:operator,at:Date.now(),workers:[]};
-    updateTaskInDOM(tid); scheduleSave(); // surgical — no full re-render
+    markLocalChange(); updateTaskInDOM(tid); scheduleSave();
   }
 
   // ── Persistence ────────────────────────────────────
@@ -1479,6 +1475,7 @@
     if (!db) { setConn("offline","No database connection"); return; }
     if (isSaving) { saveQueued = true; return; }
     isSaving = true;
+    lastSaveTs = Date.now(); // stamp NOW — echo window starts immediately, not on confirm
 
     const row       = buildRow();
     const MAX_RETRY = 3;
