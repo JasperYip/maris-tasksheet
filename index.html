@@ -1593,7 +1593,7 @@
       delBtn.textContent = "✕";
       delBtn.title = "Delete group";
       delBtn.addEventListener("click", () => {
-        if (group.items.length > 0 && !confirm("Delete group "" + group.name + "" and all its tools?")) return;
+        if (group.items.length > 0 && !confirm("Delete group \"" + group.name + "\" and all its tools?")) return;
         group.items.forEach(it => delete toolboxStates[it.id]);
         toolboxGroups.splice(gIdx, 1);
         renderPacking(); scheduleSave();
