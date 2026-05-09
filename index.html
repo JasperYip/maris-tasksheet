@@ -760,6 +760,7 @@
   let testObjective = "";  // short paragraph describing the test goals
   let currentTab    = "task";
   let editMode      = false;
+  let editingBy     = null;  // who currently has edit mode open (from Supabase)
   let operator      = localStorage.getItem("maris_operator") || "";
   const $           = id => document.getElementById(id);
 
@@ -800,6 +801,12 @@
 
   // ── Edit mode ──────────────────────────────────────
   function setEditMode(on) {
+    // If someone else is editing, block entering edit mode
+    if (on && editingBy && editingBy !== operator) {
+      alert(editingBy + " is currently editing. Please wait until they finish.");
+      return;
+    }
+
     editMode = on;
     const sheet = $("sheet");
     const btn   = $("editModeBtn");
@@ -807,19 +814,42 @@
       sheet.classList.add("editing");
       btn.classList.add("active");
       btn.textContent = "Done Editing";
-      // Make inline fields interactive
       $("fieldDate").removeAttribute("readonly");
       $("fieldLabel").removeAttribute("readonly");
+      // Broadcast that we are now editing
+      scheduleSave();
     } else {
       sheet.classList.remove("editing");
       btn.classList.remove("active");
       btn.textContent = "Edit";
       $("fieldDate").setAttribute("readonly","");
       $("fieldLabel").setAttribute("readonly","");
-      // Save meta on exit
-      save();
+      // Save changes, then pull latest so we get any changes made while we were editing
+      save().then(() => load());
     }
     render();
+    updateEditLockUI();
+  }
+
+  // Update the Edit button to show lock state
+  function updateEditLockUI() {
+    const btn = $("editModeBtn");
+    if (!btn) return;
+    if (editMode) {
+      // We are editing — already handled by setEditMode
+      return;
+    }
+    if (editingBy && editingBy !== operator) {
+      btn.textContent = editingBy + " editing…";
+      btn.style.color = "var(--red)";
+      btn.style.borderColor = "var(--red)";
+      btn.title = editingBy + " is in edit mode. Wait for them to finish.";
+    } else {
+      btn.textContent = "Edit";
+      btn.style.color = "";
+      btn.style.borderColor = "";
+      btn.title = "";
+    }
   }
 
   $("editModeBtn").addEventListener("click", () => setEditMode(!editMode));
@@ -909,10 +939,15 @@
 
   // Apply an incoming remote record
   function applyRemoteUpdate(rec) {
-    // Ignore if: we just saved (our own echo) OR our local data is newer
-    const recTs = rec.updated || 0;
-    if (Date.now() - lastSaveTs < 4000) return;    // echo window
-    if (recTs < localUpdatedTs) return;             // remote is stale vs our local edits
+    // Never clobber local state while user is editing
+    if (editMode) {
+      // Still update the editingBy field so we know if someone else is also editing
+      editingBy = rec.editingBy || null;
+      updateEditLockUI();
+      return;
+    }
+    // Ignore our own echo
+    if (Date.now() - lastSaveTs < 4000) return;
 
     applyRecord(rec);
     cacheLocally(rec);
@@ -1061,6 +1096,7 @@
           // Swap
           [list[idx], list[newIdx]] = [list[newIdx], list[idx]];
           setTaskList(list);
+          applyFixedOverrides(); // update FIXED_SECTIONS.tasks from _sectionOrder before render
           markLocalChange(); render(); scheduleSave();
         }
 
@@ -1304,6 +1340,7 @@
       toolboxGroups: row.toolbox_groups || null,
       toolboxStates: row.toolbox_states || {},
       carryItems:    row.carry_items    || {},
+      editingBy:     row.editing_by     || null,
       updated:       row.updated_at     || 0
     };
   }
@@ -1322,6 +1359,7 @@
       toolbox_groups: toolboxGroups,
       toolbox_states: toolboxStates,
       carry_items:    carryItems,
+      editing_by:     editMode ? operator : null,
       updated_at:     Date.now()
     };
   }
@@ -1340,6 +1378,8 @@
     toolboxStates  = rec.toolboxStates || {};
     carryItems     = rec.carryItems    || {};
     testObjective  = rec.objective     || "";
+    editingBy = rec.editingBy || null;
+    updateEditLockUI();
     if ($("objectiveDisplay"))  $("objectiveDisplay").textContent  = testObjective;
     // Only update the textarea if the user isn't currently typing in it
     if ($("fieldObjective") && document.activeElement !== $("fieldObjective"))
