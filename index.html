@@ -450,8 +450,8 @@
   .sheet.editing .task-edit-text { display:block; }
   .sheet.editing .task-edit-tag  { display:block; }
 
-  /* Drag-over indicator */
-  li.task.dragging { opacity:0.35; }
+  /* Drag states */
+  li.task.dragging { opacity:0.15; }
   li.task.drag-over { border-top:2px solid var(--yellow) !important; }
 
 
@@ -791,7 +791,7 @@
         .map(([tid]) => map[tid]).filter(Boolean);
       const chip = document.createElement("div");
       chip.className = "crew-chip" + (name===operator?" me":active.length?" busy":" available");
-      chip.innerHTML = `<span class="crew-status-dot"></span>${name}${active.length?`<span class="crew-tasks">[${active.join(",")}]</span>`:""}`;
+      chip.innerHTML = '<span class="crew-status-dot"></span>' + name;
       panel.appendChild(chip);
     });
   }
@@ -900,16 +900,24 @@
     renderCrew();
   }
 
-  // Apply an incoming remote record — only re-renders tasks if NOT in edit mode
+  // Track when we last saved so we can ignore our own realtime echo
+  let lastSaveTs = 0;
+
+  // Apply an incoming remote record
   function applyRemoteUpdate(rec) {
+    // If this update arrived within 3s of our own save, it's our own echo — skip it
+    // This prevents the "drag reverts" bug where our save triggers a realtime event
+    // that overwrites the reordered DOM before the user sees it
+    if (Date.now() - lastSaveTs < 3000) return;
+
     applyRecord(rec);
     cacheLocally(rec);
     setConn("live", "Live · synced");
     $("lastSync").textContent = "synced " + fmtTime(Date.now());
     if (editMode) {
-      // Don't wipe the edit DOM — silently refresh progress and crew only
       renderProgress();
       renderCrew();
+      render(); // always re-render in edit mode so order changes from others show up
     } else {
       render();
     }
@@ -1025,78 +1033,125 @@
         editText.addEventListener("click", e => e.stopPropagation());
         editTag.addEventListener("click",  e => e.stopPropagation());
 
-        // ── Drag to reorder ──────────────────────────
+        // ── Drag to reorder — ghost + placeholder ────────
         const handle = li.querySelector(".drag-handle");
-        let dragSec = sec; // capture section for this task
 
         handle.addEventListener("pointerdown", e => {
           if (!editMode) return;
           e.preventDefault();
-          handle.setPointerCapture(e.pointerId);
+          e.stopPropagation();
 
-          const allLis   = [...ul.querySelectorAll("li.task")];
-          const liRect   = li.getBoundingClientRect();
-          const offsetY  = e.clientY - liRect.top;
-          let   dropTarget = null;
+          const allLis = [...ul.querySelectorAll("li.task")];
+          const liRect  = li.getBoundingClientRect();
+          const offsetY = e.clientY - liRect.top;
+          const offsetX = e.clientX - liRect.left;
 
-          li.classList.add("dragging");
-          li.style.pointerEvents = "none";
+          // ── Ghost: floating clone that follows cursor ──
+          const ghost = li.cloneNode(true);
+          ghost.style.cssText = [
+            "position:fixed",
+            "left:" + liRect.left + "px",
+            "top:"  + liRect.top  + "px",
+            "width:" + liRect.width + "px",
+            "opacity:0.85",
+            "pointer-events:none",
+            "z-index:9999",
+            "background:var(--surface-2)",
+            "border:1px solid var(--yellow)",
+            "box-shadow:0 8px 24px rgba(0,0,0,0.4)",
+            "transition:none",
+            "transform:scale(1.02)",
+          ].join(";");
+          document.body.appendChild(ghost);
+
+          // ── Placeholder: empty slot showing drop position ──
+          const placeholder = document.createElement("li");
+          placeholder.style.cssText = [
+            "height:" + liRect.height + "px",
+            "border:2px dashed var(--yellow)",
+            "opacity:0.5",
+            "pointer-events:none",
+            "list-style:none",
+            "background:rgba(244,208,63,0.04)",
+            "transition:none",
+          ].join(";");
+
+          // Hide the original row, insert placeholder in its place
+          li.style.opacity = "0.15";
+          ul.insertBefore(placeholder, li);
+
+          let currentPlaceholderBefore = li; // track where placeholder sits
 
           const onMove = ev => {
-            // Find which li we're hovering over
-            allLis.forEach(other => other.classList.remove("drag-over"));
-            const hovered = allLis.find(other => {
-              if (other === li) return false;
-              const r = other.getBoundingClientRect();
-              return ev.clientY >= r.top && ev.clientY <= r.bottom;
-            });
-            if (hovered) {
-              hovered.classList.add("drag-over");
-              dropTarget = hovered;
-            } else {
-              dropTarget = null;
+            // Move ghost
+            ghost.style.left = (ev.clientX - offsetX) + "px";
+            ghost.style.top  = (ev.clientY - offsetY) + "px";
+
+            // Find which row the cursor is over (excluding dragged row and placeholder)
+            const targets = allLis.filter(r => r !== li);
+            let insertBefore = null;
+
+            for (const target of targets) {
+              const r = target.getBoundingClientRect();
+              const mid = r.top + r.height / 2;
+              if (ev.clientY < mid) { insertBefore = target; break; }
+            }
+
+            // Move placeholder if needed
+            const newRef = insertBefore || null;
+            if (newRef !== currentPlaceholderBefore) {
+              currentPlaceholderBefore = newRef;
+              if (newRef) ul.insertBefore(placeholder, newRef);
+              else        ul.appendChild(placeholder);
             }
           };
 
           const onUp = () => {
+            document.removeEventListener("pointermove", onMove);
+            document.removeEventListener("pointerup",   onUp);
             handle.releasePointerCapture(e.pointerId);
-            handle.removeEventListener("pointermove", onMove);
-            handle.removeEventListener("pointerup",   onUp);
 
-            li.classList.remove("dragging");
-            li.style.pointerEvents = "";
-            allLis.forEach(other => other.classList.remove("drag-over"));
+            // Remove ghost and restore original
+            ghost.remove();
+            placeholder.remove();
+            li.style.opacity = "";
 
-            if (!dropTarget) return;
+            // Work out new index from placeholder's former position
+            const finalList = [...ul.querySelectorAll("li.task")];
+            const fromIdx   = finalList.findIndex(r => r === li);
 
-            // Reorder the task array
+            // Find where to insert — use placeholder's next sibling at time of drop
+            // We track via currentPlaceholderBefore
+            const refEl     = currentPlaceholderBefore;
+            let toIdx = refEl
+              ? finalList.findIndex(r => r === refEl)
+              : finalList.length;
+            if (toIdx > fromIdx) toIdx--; // adjust for removed item
+
+            if (fromIdx === toIdx || fromIdx === -1) return;
+
+            // Reorder the data array
             const getList = () => sec.dynamic
-              ? (dynamicTasksMap[sec.id] || [])
-              : sec.tasks;
+              ? [...(dynamicTasksMap[sec.id] || [])]
+              : [...sec.tasks];
 
-            const setList = newList => {
-              if (sec.dynamic) {
-                dynamicTasksMap = { ...dynamicTasksMap, [sec.id]: newList };
-              } else {
-                // For fixed sections reorder affects extraFixed + base tasks together
-                // Store full order override
-                if (!window._sectionOrder) window._sectionOrder = {};
-                window._sectionOrder[sec.id] = newList.map(t => t.id);
-              }
-            };
+            const list    = getList();
+            const [moved] = list.splice(fromIdx, 1);
+            list.splice(toIdx, 0, moved);
 
-            const list    = [...getList()];
-            const fromIdx = list.findIndex(t => t.id === task.id);
-            const toIdx   = list.findIndex(t => t.id === dropTarget.dataset.id);
-            if (fromIdx === -1 || toIdx === -1) return;
+            if (sec.dynamic) {
+              dynamicTasksMap = { ...dynamicTasksMap, [sec.id]: list };
+            } else {
+              if (!window._sectionOrder) window._sectionOrder = {};
+              window._sectionOrder[sec.id] = list.map(t => t.id);
+            }
 
-            list.splice(toIdx, 0, list.splice(fromIdx, 1)[0]);
-            setList(list);
             render(); scheduleSave();
           };
 
-          handle.addEventListener("pointermove", onMove);
-          handle.addEventListener("pointerup",   onUp);
+          handle.setPointerCapture(e.pointerId);
+          document.addEventListener("pointermove", onMove);
+          document.addEventListener("pointerup",   onUp);
         });
 
         // Task interactions — disabled in edit mode
@@ -1436,6 +1491,7 @@
 
       if (!error) {
         cacheLocally(rowToRecord(row));
+        lastSaveTs = Date.now();
         setConn("live", "Live · synced");
         $("lastSync").textContent = "synced " + fmtTime(Date.now());
         break;
