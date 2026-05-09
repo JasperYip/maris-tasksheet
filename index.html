@@ -791,7 +791,7 @@
         .map(([tid]) => map[tid]).filter(Boolean);
       const chip = document.createElement("div");
       chip.className = "crew-chip" + (name===operator?" me":active.length?" busy":" available");
-      chip.innerHTML = `<span class="crew-status-dot"></span>${name}${active.length?`<span class="crew-tasks">[${active.join(",")}]</span>`:""}`;
+      chip.innerHTML = `<span class="crew-status-dot"></span>${name}`;
       panel.appendChild(chip);
     });
   }
