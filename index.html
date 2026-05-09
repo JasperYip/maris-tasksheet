@@ -49,7 +49,7 @@
   /* ── Tab bar ── */
   .tab-bar {
     display:flex; border-bottom:1px solid var(--rule);
-    background:var(--surface-2); padding:0 24px; gap:0;
+    background:var(--surface-2); padding:0; gap:0; align-items:stretch;
   }
   .tab-btn {
     font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700;
@@ -58,6 +58,7 @@
     color:var(--ink-faint); padding:12px 18px; cursor:pointer;
     transition:all 0.15s ease; margin-bottom:-1px;
   }
+  .tab-btn:first-child { padding-left:24px; }
   .tab-btn:hover { color:var(--ink); }
   .tab-btn.active { color:var(--yellow); border-bottom-color:var(--yellow); }
 
@@ -202,8 +203,10 @@
 
   @media (max-width:700px) {
     .pack-section { padding:18px 16px; }
-    .tab-bar { padding:0 16px; }
+    .tab-bar { padding:0; }
     .tab-btn { padding:10px 12px; font-size:9px; }
+    .tab-btn:first-child { padding-left:16px; }
+    .edit-mode-btn { padding:10px 12px; font-size:9px; }
     .pack-sec-title { font-size:17px; }
   }
 
@@ -239,17 +242,16 @@
 
   .corner-mark { position:absolute; top:24px; right:90px; height:38px; width:auto; opacity:0.85; filter:drop-shadow(0 0 12px rgba(244,208,63,0.15)); pointer-events:none; z-index:2; }
 
-  /* Edit mode button — sits top-right, above corner mark */
   .edit-mode-btn {
-    position:absolute; top:16px; right:16px; z-index:10;
     font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700;
     letter-spacing:0.15em; text-transform:uppercase;
-    background:transparent; border:1px solid var(--rule);
-    color:var(--ink-faint); padding:7px 13px; cursor:pointer;
-    transition:all 0.15s ease;
+    background:transparent; border:none; border-left:1px solid var(--rule);
+    border-bottom:2px solid transparent;
+    color:var(--ink-faint); padding:12px 18px; cursor:pointer;
+    transition:all 0.15s ease; margin-left:auto; margin-bottom:-1px;
   }
-  .edit-mode-btn:hover { border-color:var(--yellow); color:var(--yellow); }
-  .edit-mode-btn.active { background:var(--yellow); border-color:var(--yellow); color:var(--bg); }
+  .edit-mode-btn:hover { color:var(--yellow); }
+  .edit-mode-btn.active { background:var(--yellow); color:var(--bg); border-bottom-color:var(--yellow); }
 
   /* Edit mode banner */
   .edit-banner {
@@ -551,6 +553,7 @@
   <div class="tab-bar">
     <button class="tab-btn active" id="tabTask">☰ Task Sheet</button>
     <button class="tab-btn" id="tabPack">✦ Packing List</button>
+    <button class="edit-mode-btn" id="editModeBtn" style="margin-left:auto;position:static;border-left:1px solid var(--rule);border-radius:0;">Edit</button>
   </div>
 
   <div class="page active" id="page-task">
@@ -568,9 +571,6 @@
 
   <header>
     <img src="maris_glider.png" alt="" class="corner-mark" />
-
-    <!-- Edit mode toggle -->
-    <button class="edit-mode-btn" id="editModeBtn">Edit</button>
 
     <div class="doc-bar">
       <div class="doc-id">DOC <span>// MARIS-TS</span> · REV 03</div>
