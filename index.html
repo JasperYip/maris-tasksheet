@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&family=Archivo+Black&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0a0a; --surface: #131311; --surface-2: #1a1a17;
+    --bg: #0a0a0a; --surface: #131311; --surface-1: #161613; --surface-2: #1a1a17;
     --ink: #f5f1e8; --ink-dim: #a8a499; --ink-faint: #5a564d;
     --rule: #2a2a25; --yellow: #f4d03f; --yellow-bright: #ffd91c;
     --yellow-dim: #8a7a1f; --green: #4caf7d; --red: #e05252;
@@ -280,7 +280,7 @@
   .stamp.complete { background:var(--yellow); border-color:var(--yellow); color:var(--bg); }
 
   /* ── Test details card ── */
-  .test-details { padding:12px 36px; border-bottom:1px solid var(--rule); background:var(--surface); }
+  .test-details { padding:12px 36px; border-bottom:1px solid var(--rule); background:var(--surface-1); }
   .test-details-row { display:flex; flex-wrap:wrap; gap:16px; margin-bottom:10px; align-items:flex-end; }
   .test-detail-item { display:flex; flex-direction:column; gap:5px; }
   .test-detail-label { font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-faint); }
@@ -333,7 +333,7 @@
   .tab-btn.active { color:var(--yellow); border-bottom-color:var(--yellow); }
 
   /* ── Progress ── */
-  .progress-wrap { padding:22px 36px; border-bottom:1px solid var(--rule); display:flex; align-items:center; gap:22px; background:var(--surface-2); }
+  .progress-wrap { padding:22px 36px; border-bottom:1px solid var(--rule); display:flex; align-items:center; gap:22px; background:var(--surface-1); }
   .progress-track { flex:1; height:16px; background:var(--bg); border:1px solid var(--rule); position:relative; overflow:hidden; }
   .progress-track::before { content:""; position:absolute; inset:0; background-image:repeating-linear-gradient(90deg,transparent 0 23px,var(--rule) 23px 24px); pointer-events:none; z-index:2; }
   .progress-fill-active { position:absolute; top:0; bottom:0; left:0; width:0%; background:repeating-linear-gradient(-45deg,#3a3a35 0 8px,#2a2a25 8px 16px); transition:width 0.5s cubic-bezier(.2,.8,.2,1); z-index:0; }
@@ -342,7 +342,7 @@
   .progress-label .pct { color:var(--yellow); margin-left:8px; }
 
   /* ── Hint bar ── */
-  .hint-bar { padding:8px 36px; background:var(--surface-2); border-bottom:1px solid var(--rule); font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-faint); display:flex; gap:24px; flex-wrap:wrap; }
+  .hint-bar { padding:8px 36px; background:var(--surface-1); border-bottom:1px solid var(--rule); font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-faint); display:flex; gap:24px; flex-wrap:wrap; }
   .hint-bar span { display:flex; align-items:center; gap:6px; }
   .hint-key { border:1px solid var(--ink-faint); padding:1px 5px; font-size:8px; color:var(--ink-dim); }
 
