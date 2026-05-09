@@ -549,8 +549,8 @@
 
   <!-- Tab bar -->
   <div class="tab-bar">
-    <button class="tab-btn active" id="tabTask" onclick="switchTab('task')">☰ Task Sheet</button>
-    <button class="tab-btn" id="tabPack" onclick="switchTab('pack')">✦ Packing List</button>
+    <button class="tab-btn active" id="tabTask">☰ Task Sheet</button>
+    <button class="tab-btn" id="tabPack">✦ Packing List</button>
   </div>
 
   <div class="page active" id="page-task">
@@ -1264,151 +1264,199 @@
   document.addEventListener("visibilitychange", () => { if (!document.hidden && !editMode) load(); });
 
 
-  // ── Tab switching ────────────────────────────────────
+  // ── Tab switching ─────────────────────────────────────
   function switchTab(tab) {
     currentTab = tab;
-    document.getElementById("page-task").classList.toggle("active", tab==="task");
-    document.getElementById("page-pack").classList.toggle("active", tab==="pack");
-    document.getElementById("tabTask").classList.toggle("active", tab==="task");
-    document.getElementById("tabPack").classList.toggle("active", tab==="pack");
+    document.getElementById("page-task").classList.toggle("active", tab === "task");
+    document.getElementById("page-pack").classList.toggle("active", tab === "pack");
+    document.getElementById("tabTask").classList.toggle("active", tab === "task");
+    document.getElementById("tabPack").classList.toggle("active", tab === "pack");
     if (tab === "pack") renderPacking();
   }
+  $("tabTask").addEventListener("click", () => switchTab("task"));
+  $("tabPack").addEventListener("click", () => switchTab("pack"));
 
   // ── Packing page render ──────────────────────────────
   function renderPacking() {
     const root = $("packContent");
     root.innerHTML = "";
 
-    // ── Toolbox section ──
+    // ── Toolbox section ──────────────────────────────
     const tbDone  = toolboxItems.filter(it => (toolboxStates[it.id]||{}).checked).length;
     const tbTotal = toolboxItems.length;
 
     const tbSec = document.createElement("div");
     tbSec.className = "pack-section";
-    tbSec.innerHTML = `
-      <div class="pack-sec-head">
-        <span class="pack-sec-num toolbox">TB</span>
-        <h2 class="pack-sec-title">Toolbox Checklist</h2>
-        <span class="pack-progress">${tbDone} / ${tbTotal}</span>
-      </div>
-      <ul class="pack-items" id="tbList"></ul>
-      <div class="pack-add-row" id="tbAddRow">
-        <input class="pack-add-input" type="text" placeholder="Add tool…" id="tbInput" />
-        <button class="pack-add-btn" id="tbAddBtn">+</button>
-      </div>`;
-    const tbList = tbSec.querySelector("#tbList");
+
+    const tbHead = document.createElement("div");
+    tbHead.className = "pack-sec-head";
+    tbHead.innerHTML = '<span class="pack-sec-num toolbox">TB</span>'
+      + '<h2 class="pack-sec-title">Toolbox Checklist</h2>'
+      + '<span class="pack-progress">' + tbDone + " / " + tbTotal + "</span>";
+
+    const resetTbBtn = document.createElement("button");
+    resetTbBtn.className = "btn";
+    resetTbBtn.textContent = "Reset Checks";
+    resetTbBtn.style.cssText = "display:none;font-size:9px;padding:5px 10px;margin-left:8px;";
+    resetTbBtn.addEventListener("click", () => { toolboxStates = {}; renderPacking(); scheduleSave(); });
+    if (editMode) resetTbBtn.style.display = "inline-flex";
+    tbHead.appendChild(resetTbBtn);
+    tbSec.appendChild(tbHead);
+
+    const tbList = document.createElement("ul");
+    tbList.className = "pack-items";
 
     if (toolboxItems.length === 0) {
-      tbList.innerHTML = `<li style="padding:10px 4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-faint);letter-spacing:0.1em;">No tools added yet.</li>`;
+      const empty = document.createElement("li");
+      empty.style.cssText = "padding:10px 4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-faint);letter-spacing:0.1em;";
+      empty.textContent = "No tools added yet.";
+      tbList.appendChild(empty);
     }
-    toolboxItems.forEach(item => {
-      const st  = toolboxStates[item.id] || {};
-      const li  = document.createElement("li");
-      li.className = "pack-item" + (st.checked ? " checked" : "");
-      li.innerHTML = `
-        <div class="pack-check"></div>
-        <span class="pack-item-text">\${item.text}</span>
-        \${st.checked && st.by ? `<span class="pack-item-by">\${st.by}</span>` : ""}
-        <button class="pack-remove-btn" data-id="\${item.id}">✕</button>`;
 
-      li.querySelector(".pack-check").addEventListener("click", () => {
+    toolboxItems.forEach(item => {
+      const st = toolboxStates[item.id] || {};
+      const li = document.createElement("li");
+      li.className = "pack-item" + (st.checked ? " checked" : "");
+
+      const chk = document.createElement("div");
+      chk.className = "pack-check";
+      chk.addEventListener("click", () => {
         if (!ensureOp()) return;
         const cur = toolboxStates[item.id] || {};
-        toolboxStates[item.id] = cur.checked
-          ? { checked: false }
-          : { checked: true, by: operator };
+        toolboxStates[item.id] = cur.checked ? { checked:false } : { checked:true, by:operator };
         renderPacking(); scheduleSave();
       });
-      li.querySelector(".pack-remove-btn").addEventListener("click", e => {
+
+      const txt = document.createElement("span");
+      txt.className = "pack-item-text";
+      txt.textContent = item.text;
+
+      li.appendChild(chk);
+      li.appendChild(txt);
+
+      if (st.checked && st.by) {
+        const by = document.createElement("span");
+        by.className = "pack-item-by";
+        by.textContent = st.by;
+        li.appendChild(by);
+      }
+
+      const rmBtn = document.createElement("button");
+      rmBtn.className = "pack-remove-btn";
+      rmBtn.textContent = "✕";
+      rmBtn.addEventListener("click", e => {
         e.stopPropagation();
         toolboxItems = toolboxItems.filter(t => t.id !== item.id);
         delete toolboxStates[item.id];
         renderPacking(); scheduleSave();
       });
+      li.appendChild(rmBtn);
       tbList.appendChild(li);
     });
+    tbSec.appendChild(tbList);
 
-    // Toolbox add
-    const tbAddBtn = tbSec.querySelector("#tbAddBtn");
-    const tbInput  = tbSec.querySelector("#tbInput");
+    // Add tool row
+    const tbAddRow = document.createElement("div");
+    tbAddRow.className = "pack-add-row";
+    const tbInput = document.createElement("input");
+    tbInput.className = "pack-add-input";
+    tbInput.type = "text";
+    tbInput.placeholder = "Add tool…";
+    const tbAddBtn = document.createElement("button");
+    tbAddBtn.className = "pack-add-btn";
+    tbAddBtn.textContent = "+";
     const doAddTool = () => {
       if (!ensureOp()) return;
       const text = tbInput.value.trim(); if (!text) return;
-      toolboxItems = [...toolboxItems, { id: "tb_"+Date.now(), text }];
+      toolboxItems = [...toolboxItems, { id: "tb_" + Date.now(), text }];
       renderPacking(); scheduleSave();
-      setTimeout(() => { const el = $("tbInput"); if(el) el.focus(); }, 0);
     };
     tbAddBtn.addEventListener("click", doAddTool);
-    tbInput.addEventListener("keydown", e => { if(e.key==="Enter") doAddTool(); });
-
-    // Toolbox reset button (appears in edit mode section head)
-    const resetTbBtn = document.createElement("button");
-    resetTbBtn.className = "btn";
-    resetTbBtn.textContent = "Reset Checks";
-    resetTbBtn.style.cssText = "display:none;font-size:9px;padding:5px 10px;margin-left:8px;";
-    resetTbBtn.addEventListener("click", () => {
-      toolboxStates = {}; renderPacking(); scheduleSave();
-    });
-    if (editMode) resetTbBtn.style.display = "inline-flex";
-    tbSec.querySelector(".pack-sec-head").appendChild(resetTbBtn);
-
+    tbInput.addEventListener("keydown", e => { if (e.key === "Enter") doAddTool(); });
+    tbAddRow.appendChild(tbInput);
+    tbAddRow.appendChild(tbAddBtn);
+    tbSec.appendChild(tbAddRow);
     root.appendChild(tbSec);
 
-    // ── Carry distribution sections ──
-    const dividerSec = document.createElement("div");
-    dividerSec.style.cssText = "padding:14px 36px 0;";
-    dividerSec.innerHTML = `
-      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-faint);padding-bottom:14px;border-bottom:1px solid var(--rule);">
-        Carry Distribution — There &amp; Back
-      </div>`;
-    root.appendChild(dividerSec);
+    // ── Divider ───────────────────────────────────────
+    const divider = document.createElement("div");
+    divider.style.cssText = "padding:14px 36px 0;";
+    const divInner = document.createElement("div");
+    divInner.style.cssText = "font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-faint);padding-bottom:14px;border-bottom:1px solid var(--rule);";
+    divInner.textContent = "Carry Distribution — There & Back";
+    divider.appendChild(divInner);
+    root.appendChild(divider);
 
-    TEAM.forEach((member, idx) => {
-      const items = carryItems[member] || [];
+    // ── Carry distribution ────────────────────────────
+    TEAM.forEach(member => {
+      const items      = carryItems[member] || [];
       const thereCount = items.filter(it => it.there).length;
       const backCount  = items.filter(it => it.back).length;
-      const isMe = member === operator;
+      const isMe       = member === operator;
 
       const sec = document.createElement("div");
       sec.className = "pack-section";
-      sec.innerHTML = `
-        <div class="pack-member-head">
-          <h3 class="pack-member-name\${isMe?" is-me":""}">\${member}\${isMe?' <span style="font-family:JetBrains Mono,monospace;font-size:9px;letter-spacing:0.1em;vertical-align:middle;color:var(--yellow);"> (you)</span>':""}</h3>
-          <span class="pack-progress" style="margin-left:auto;">→ \${thereCount}/\${items.length} · ← \${backCount}/\${items.length}</span>
-        </div>
-        <ul class="pack-items" id="carry_\${member}"></ul>
-        <div class="pack-add-row">
-          <input class="pack-add-input" type="text" placeholder="Add item for \${member}…" id="carryInput_\${member}" />
-          <button class="pack-add-btn" id="carryAddBtn_\${member}">+</button>
-        </div>`;
 
-      const ul = sec.querySelector(`#carry_\${member}`);
+      // Member header
+      const memHead = document.createElement("div");
+      memHead.className = "pack-member-head";
+
+      const memName = document.createElement("h3");
+      memName.className = "pack-member-name" + (isMe ? " is-me" : "");
+      memName.textContent = member;
+      if (isMe) {
+        const youTag = document.createElement("span");
+        youTag.style.cssText = "font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.1em;vertical-align:middle;color:var(--yellow);margin-left:6px;";
+        youTag.textContent = "(you)";
+        memName.appendChild(youTag);
+      }
+
+      const prog = document.createElement("span");
+      prog.className = "pack-progress";
+      prog.style.marginLeft = "auto";
+      prog.textContent = "→ " + thereCount + "/" + items.length + " · ← " + backCount + "/" + items.length;
+
+      memHead.appendChild(memName);
+      memHead.appendChild(prog);
+      sec.appendChild(memHead);
+
+      // Items list
+      const ul = document.createElement("ul");
+      ul.className = "pack-items";
 
       if (items.length === 0) {
-        ul.innerHTML = `<li style="padding:10px 4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-faint);letter-spacing:0.1em;">Nothing assigned yet.</li>`;
+        const empty = document.createElement("li");
+        empty.style.cssText = "padding:10px 4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-faint);letter-spacing:0.1em;";
+        empty.textContent = "Nothing assigned yet.";
+        ul.appendChild(empty);
       }
 
       items.forEach(item => {
         const li = document.createElement("li");
         li.className = "pack-item";
-        li.innerHTML = `
-          <span class="pack-item-text">\${item.text}</span>
-          <div class="carry-checks">
-            <div class="carry-check-wrap">
-              <span class="carry-check-label">There</span>
-              <div class="carry-check \${item.there?"there-done":""}" data-dir="there" data-id="\${item.id}"></div>
-            </div>
-            <div class="carry-check-wrap">
-              <span class="carry-check-label">Back</span>
-              <div class="carry-check \${item.back?"back-done":""}" data-dir="back" data-id="\${item.id}"></div>
-            </div>
-          </div>
-          <button class="pack-remove-btn" data-member="\${member}" data-id="\${item.id}">✕</button>`;
 
-        li.querySelectorAll(".carry-check").forEach(btn => {
-          btn.addEventListener("click", () => {
+        const txt = document.createElement("span");
+        txt.className = "pack-item-text";
+        txt.textContent = item.text;
+        li.appendChild(txt);
+
+        // There / Back checkboxes
+        const checksDiv = document.createElement("div");
+        checksDiv.className = "carry-checks";
+
+        ["there", "back"].forEach(dir => {
+          const wrap = document.createElement("div");
+          wrap.className = "carry-check-wrap";
+
+          const lbl = document.createElement("span");
+          lbl.className = "carry-check-label";
+          lbl.textContent = dir === "there" ? "There" : "Back";
+
+          const chk = document.createElement("div");
+          chk.className = "carry-check" + (item[dir] ? (" " + dir + "-done") : "");
+          chk.dataset.dir = dir;
+          chk.addEventListener("click", () => {
             if (!ensureOp()) return;
-            const dir = btn.dataset.dir;
             const memberItems = [...(carryItems[member]||[])];
             const idx2 = memberItems.findIndex(i => i.id === item.id);
             if (idx2 === -1) return;
@@ -1416,28 +1464,51 @@
             carryItems = { ...carryItems, [member]: memberItems };
             renderPacking(); scheduleSave();
           });
+
+          wrap.appendChild(lbl);
+          wrap.appendChild(chk);
+          checksDiv.appendChild(wrap);
         });
-        li.querySelector(".pack-remove-btn").addEventListener("click", e => {
+        li.appendChild(checksDiv);
+
+        // Remove button
+        const rmBtn = document.createElement("button");
+        rmBtn.className = "pack-remove-btn";
+        rmBtn.textContent = "✕";
+        rmBtn.addEventListener("click", e => {
           e.stopPropagation();
           carryItems = { ...carryItems, [member]: (carryItems[member]||[]).filter(i => i.id !== item.id) };
           renderPacking(); scheduleSave();
         });
+        li.appendChild(rmBtn);
         ul.appendChild(li);
       });
+      sec.appendChild(ul);
 
-      // Add carry item
+      // Add item row
+      const addRow = document.createElement("div");
+      addRow.className = "pack-add-row";
+      const addInput = document.createElement("input");
+      addInput.className = "pack-add-input";
+      addInput.type = "text";
+      addInput.placeholder = "Add item for " + member + "…";
+      const addBtn = document.createElement("button");
+      addBtn.className = "pack-add-btn";
+      addBtn.textContent = "+";
+
       const doAddCarry = () => {
         if (!ensureOp()) return;
-        const inp  = sec.querySelector(`#carryInput_\${member}`);
-        const text = inp.value.trim(); if (!text) return;
-        const newItem = { id: "ci_"+Date.now()+"_"+Math.random().toString(36).slice(2), text, there:false, back:false };
+        const text = addInput.value.trim(); if (!text) return;
+        const newItem = { id: "ci_" + Date.now() + "_" + Math.random().toString(36).slice(2), text, there:false, back:false };
         carryItems = { ...carryItems, [member]: [...(carryItems[member]||[]), newItem] };
         renderPacking(); scheduleSave();
-        setTimeout(() => { const el = sec.querySelector(`#carryInput_\${member}`); if(el) el.focus(); }, 0);
+        setTimeout(() => addInput.focus(), 0);
       };
-      sec.querySelector(`#carryAddBtn_\${member}`).addEventListener("click", doAddCarry);
-      sec.querySelector(`#carryInput_\${member}`).addEventListener("keydown", e => { if(e.key==="Enter") doAddCarry(); });
-
+      addBtn.addEventListener("click", doAddCarry);
+      addInput.addEventListener("keydown", e => { if (e.key === "Enter") doAddCarry(); });
+      addRow.appendChild(addInput);
+      addRow.appendChild(addBtn);
+      sec.appendChild(addRow);
       root.appendChild(sec);
     });
   }
