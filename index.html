@@ -437,9 +437,13 @@
   .remove-task-btn:hover { border-color:var(--red); color:var(--red); }
 
   /* Drag handle */
-  .drag-handle { display:none; flex-shrink:0; width:24px; height:24px; align-items:center; justify-content:center; color:var(--ink-faint); cursor:grab; font-size:16px; margin-top:1px; touch-action:none; user-select:none; }
-  .sheet.editing .drag-handle { display:flex; }
-  .drag-handle:active { cursor:grabbing; color:var(--yellow); }
+  /* Up/down move buttons — replace drag handle */
+  .move-btns { display:none; flex-direction:column; gap:1px; flex-shrink:0; margin-top:1px; }
+  .sheet.editing .move-btns { display:flex; }
+  .move-btn { background:transparent; border:1px solid var(--rule); color:var(--ink-faint); font-size:10px; width:22px; height:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.12s; line-height:1; padding:0; }
+  .move-btn:hover { border-color:var(--yellow); color:var(--yellow); background:rgba(244,208,63,0.06); }
+  .move-btn:disabled { opacity:0.2; cursor:default; }
+  .move-btn:disabled:hover { border-color:var(--rule); color:var(--ink-faint); background:transparent; }
 
   /* Inline edit inputs */
   .task-edit-text { display:none; flex:1; background:var(--bg); border:1px solid var(--rule); color:var(--ink); font-family:'Space Grotesk',sans-serif; font-size:15px; padding:4px 8px; outline:none; transition:border-color 0.15s; min-width:0; }
@@ -450,9 +454,7 @@
   .sheet.editing .task-edit-text { display:block; }
   .sheet.editing .task-edit-tag  { display:block; }
 
-  /* Drag states */
-  li.task.dragging { opacity:0.15; }
-  li.task.drag-over { border-top:2px solid var(--yellow) !important; }
+
 
 
   /* Toolbox subgroups */
@@ -965,7 +967,10 @@
           <div class="swipe-bg-right" data-swipe-bg="right">✓ done</div>
           <div class="swipe-bg-left"  data-swipe-bg="left">✕ undo</div>
           <div class="task-inner">
-            <div class="drag-handle" title="Drag to reorder">⠿</div>
+            <div class="move-btns">
+              <button class="move-btn move-up" title="Move up">▲</button>
+              <button class="move-btn move-dn" title="Move down">▼</button>
+            </div>
             <div class="check-box"></div>
             <div class="task-text">${task.text}</div>
             <input class="task-edit-text" type="text" value="${task.text.replace(/"/g,'&quot;')}" data-tid="${task.id}" />
@@ -1029,126 +1034,44 @@
         editText.addEventListener("click", e => e.stopPropagation());
         editTag.addEventListener("click",  e => e.stopPropagation());
 
-        // ── Drag to reorder — ghost + placeholder ────────
-        const handle = li.querySelector(".drag-handle");
+        // ── Move up / down buttons ────────────────────────
+        const moveUp = li.querySelector(".move-up");
+        const moveDn = li.querySelector(".move-dn");
 
-        handle.addEventListener("pointerdown", e => {
-          if (!editMode) return;
-          e.preventDefault();
-          e.stopPropagation();
+        // Get current task index in the data array
+        function getTaskList() {
+          return sec.dynamic
+            ? [...(dynamicTasksMap[sec.id] || [])]
+            : [...sec.tasks];
+        }
+        function setTaskList(newList) {
+          if (sec.dynamic) {
+            dynamicTasksMap = { ...dynamicTasksMap, [sec.id]: newList };
+          } else {
+            if (!window._sectionOrder) window._sectionOrder = {};
+            window._sectionOrder[sec.id] = newList.map(t => t.id);
+          }
+        }
 
-          const allLis = [...ul.querySelectorAll("li.task")];
-          const liRect  = li.getBoundingClientRect();
-          const offsetY = e.clientY - liRect.top;
-          const offsetX = e.clientX - liRect.left;
+        function moveTask(dir) {
+          const list = getTaskList();
+          const idx  = list.findIndex(t => t.id === task.id);
+          const newIdx = idx + dir;
+          if (newIdx < 0 || newIdx >= list.length) return;
+          // Swap
+          [list[idx], list[newIdx]] = [list[newIdx], list[idx]];
+          setTaskList(list);
+          markLocalChange(); render(); scheduleSave();
+        }
 
-          // ── Ghost: floating clone that follows cursor ──
-          const ghost = li.cloneNode(true);
-          ghost.style.cssText = [
-            "position:fixed",
-            "left:" + liRect.left + "px",
-            "top:"  + liRect.top  + "px",
-            "width:" + liRect.width + "px",
-            "opacity:0.85",
-            "pointer-events:none",
-            "z-index:9999",
-            "background:var(--surface-2)",
-            "border:1px solid var(--yellow)",
-            "box-shadow:0 8px 24px rgba(0,0,0,0.4)",
-            "transition:none",
-            "transform:scale(1.02)",
-          ].join(";");
-          document.body.appendChild(ghost);
+        moveUp.addEventListener("click", e => { e.stopPropagation(); moveTask(-1); });
+        moveDn.addEventListener("click", e => { e.stopPropagation(); moveTask(+1); });
 
-          // ── Placeholder: empty slot showing drop position ──
-          const placeholder = document.createElement("li");
-          placeholder.style.cssText = [
-            "height:" + liRect.height + "px",
-            "border:2px dashed var(--yellow)",
-            "opacity:0.5",
-            "pointer-events:none",
-            "list-style:none",
-            "background:rgba(244,208,63,0.04)",
-            "transition:none",
-          ].join(";");
-
-          // Hide the original row, insert placeholder in its place
-          li.style.opacity = "0.15";
-          ul.insertBefore(placeholder, li);
-
-          let currentPlaceholderBefore = li; // track where placeholder sits
-
-          const onMove = ev => {
-            // Move ghost
-            ghost.style.left = (ev.clientX - offsetX) + "px";
-            ghost.style.top  = (ev.clientY - offsetY) + "px";
-
-            // Find which row the cursor is over (excluding dragged row and placeholder)
-            const targets = allLis.filter(r => r !== li);
-            let insertBefore = null;
-
-            for (const target of targets) {
-              const r = target.getBoundingClientRect();
-              const mid = r.top + r.height / 2;
-              if (ev.clientY < mid) { insertBefore = target; break; }
-            }
-
-            // Move placeholder if needed
-            const newRef = insertBefore || null;
-            if (newRef !== currentPlaceholderBefore) {
-              currentPlaceholderBefore = newRef;
-              if (newRef) ul.insertBefore(placeholder, newRef);
-              else        ul.appendChild(placeholder);
-            }
-          };
-
-          const onUp = () => {
-            document.removeEventListener("pointermove", onMove);
-            document.removeEventListener("pointerup",   onUp);
-            handle.releasePointerCapture(e.pointerId);
-
-            // Remove ghost and restore original
-            ghost.remove();
-            placeholder.remove();
-            li.style.opacity = "";
-
-            // Work out new index from placeholder's former position
-            const finalList = [...ul.querySelectorAll("li.task")];
-            const fromIdx   = finalList.findIndex(r => r === li);
-
-            // Find where to insert — use placeholder's next sibling at time of drop
-            // We track via currentPlaceholderBefore
-            const refEl     = currentPlaceholderBefore;
-            let toIdx = refEl
-              ? finalList.findIndex(r => r === refEl)
-              : finalList.length;
-            if (toIdx > fromIdx) toIdx--; // adjust for removed item
-
-            if (fromIdx === toIdx || fromIdx === -1) return;
-
-            // Reorder the data array
-            const getList = () => sec.dynamic
-              ? [...(dynamicTasksMap[sec.id] || [])]
-              : [...sec.tasks];
-
-            const list    = getList();
-            const [moved] = list.splice(fromIdx, 1);
-            list.splice(toIdx, 0, moved);
-
-            if (sec.dynamic) {
-              dynamicTasksMap = { ...dynamicTasksMap, [sec.id]: list };
-            } else {
-              if (!window._sectionOrder) window._sectionOrder = {};
-              window._sectionOrder[sec.id] = list.map(t => t.id);
-            }
-
-            render(); markLocalChange(); scheduleSave();
-          }; // end onUp
-
-          handle.setPointerCapture(e.pointerId);
-          document.addEventListener("pointermove", onMove);
-          document.addEventListener("pointerup",   onUp);
-        }); // end pointerdown
+        // Disable top/bottom buttons based on position
+        const taskList  = getTaskList();
+        const taskIdx   = taskList.findIndex(t => t.id === task.id);
+        moveUp.disabled = taskIdx === 0;
+        moveDn.disabled = taskIdx === taskList.length - 1;
 
         // Task interactions — disabled in edit mode
         if (!editMode) {
