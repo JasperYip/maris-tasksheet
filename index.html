@@ -501,6 +501,201 @@
   }
   .sheet.editing .tb-add-group-row { display:flex; }
 
+
+  /* ── Assembly instructions ── */
+  .asm-section { padding:24px 36px; border-bottom:1px dashed var(--rule); }
+  .asm-section:last-child { border-bottom:none; }
+
+  .asm-sec-head {
+    display:flex; align-items:center; gap:12px;
+    margin-bottom:16px; flex-wrap:wrap;
+  }
+  .asm-sec-num {
+    font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700;
+    background:var(--yellow); color:var(--bg); padding:4px 9px; letter-spacing:0.12em;
+    flex-shrink:0;
+  }
+  .asm-sec-name {
+    font-family:'Archivo Black',sans-serif; font-size:20px;
+    text-transform:uppercase; color:var(--ink); margin:0;
+  }
+  .asm-sec-name-input {
+    font-family:'Archivo Black',sans-serif; font-size:20px;
+    text-transform:uppercase; color:var(--ink);
+    background:var(--bg); border:1px solid var(--rule);
+    padding:3px 10px; outline:none; display:none;
+    transition:border-color 0.15s; flex:1;
+  }
+  .asm-sec-name-input:focus { border-color:var(--yellow); }
+  .sheet.editing .asm-sec-name       { display:none; }
+  .sheet.editing .asm-sec-name-input { display:block; }
+
+  .asm-sec-del {
+    display:none; background:transparent; border:1px solid var(--rule);
+    color:var(--ink-faint); font-size:11px; width:24px; height:24px;
+    cursor:pointer; align-items:center; justify-content:center;
+    transition:all 0.15s; flex-shrink:0; margin-left:auto;
+  }
+  .sheet.editing .asm-sec-del { display:flex; }
+  .asm-sec-del:hover { border-color:var(--red); color:var(--red); }
+
+  /* Steps */
+  ol.asm-steps { list-style:none; padding:0; margin:0; counter-reset:step; }
+
+  li.asm-step {
+    display:flex; align-items:flex-start; gap:12px;
+    padding:11px 4px; border-top:1px solid var(--rule);
+    position:relative;
+  }
+  li.asm-step:first-child { border-top:none; }
+
+  .asm-step-num {
+    font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700;
+    color:var(--yellow); min-width:24px; padding-top:3px;
+    flex-shrink:0; letter-spacing:0.05em;
+  }
+
+  .asm-step-text {
+    flex:1; font-size:15px; line-height:1.5; color:var(--ink);
+    padding-top:2px; min-width:0;
+  }
+
+  .asm-step-input {
+    flex:1; font-size:15px; line-height:1.5; color:var(--ink);
+    background:var(--bg); border:1px solid var(--rule);
+    padding:4px 8px; outline:none; display:none;
+    font-family:'Space Grotesk',sans-serif;
+    transition:border-color 0.15s; min-width:0; resize:none;
+  }
+  .asm-step-input:focus { border-color:var(--yellow); }
+  .sheet.editing .asm-step-text  { display:none; }
+  .sheet.editing .asm-step-input { display:block; }
+
+  /* Move + delete buttons for steps */
+  .asm-step-actions {
+    display:none; flex-direction:column; gap:1px; flex-shrink:0;
+  }
+  .sheet.editing .asm-step-actions { display:flex; }
+  .asm-move-btn {
+    background:transparent; border:1px solid var(--rule);
+    color:var(--ink-faint); font-size:9px;
+    width:22px; height:18px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    transition:all 0.12s; padding:0;
+  }
+  .asm-move-btn:hover { border-color:var(--yellow); color:var(--yellow); background:rgba(244,208,63,0.06); }
+  .asm-move-btn:disabled { opacity:0.2; cursor:default; }
+  .asm-move-btn:disabled:hover { border-color:var(--rule); color:var(--ink-faint); background:transparent; }
+  .asm-del-btn {
+    background:transparent; border:1px solid var(--rule);
+    color:var(--ink-faint); font-size:10px;
+    width:22px; height:22px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    transition:all 0.12s; margin-top:2px; flex-shrink:0;
+  }
+  .asm-del-btn:hover { border-color:var(--red); color:var(--red); }
+
+  /* Add section row */
+  .asm-add-section-row {
+    display:none; align-items:center; gap:8px;
+    padding:20px 36px; border-top:1px dashed rgba(244,208,63,0.2);
+  }
+  .sheet.editing .asm-add-section-row { display:flex; }
+
+  /* Step checkbox — always visible */
+  .asm-step-check {
+    flex-shrink:0; width:20px; height:20px;
+    border:1.5px solid var(--ink-dim); background:var(--bg);
+    position:relative; cursor:pointer; transition:all 0.2s ease;
+    margin-top:3px;
+  }
+  .asm-step-check::after {
+    content:"✓"; position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--bg); font-size:13px; font-weight:700;
+    transform:scale(0); transition:transform 0.2s cubic-bezier(.5,1.6,.4,1);
+  }
+  li.asm-step.checked .asm-step-check { background:var(--green); border-color:var(--green); }
+  li.asm-step.checked .asm-step-check::after { transform:scale(1); }
+  li.asm-step.checked .asm-step-text { color:var(--ink-faint); text-decoration:line-through; text-decoration-color:var(--green); opacity:0.6; }
+
+  /* Warning block */
+  .asm-step-warning {
+    margin-top:6px; padding:6px 10px;
+    background:rgba(244,208,63,0.08); border-left:3px solid var(--yellow);
+    font-family:'JetBrains Mono',monospace; font-size:11px;
+    letter-spacing:0.05em; color:var(--yellow); line-height:1.5;
+  }
+  .asm-step-warning::before { content:"⚠ "; font-weight:700; }
+  .asm-warning-input {
+    display:none; width:100%; margin-top:6px;
+    background:rgba(244,208,63,0.04); border:1px dashed var(--yellow-dim);
+    color:var(--yellow); font-family:'JetBrains Mono',monospace;
+    font-size:11px; padding:6px 10px; outline:none; resize:none;
+    transition:border-color 0.15s;
+  }
+  .asm-warning-input::placeholder { color:var(--yellow-dim); opacity:0.6; }
+  .asm-warning-input:focus { border-color:var(--yellow); }
+  .sheet.editing .asm-step-warning { display:none; }
+  .sheet.editing .asm-warning-input { display:block; }
+
+  /* Step body wrapper */
+  .asm-step-body { flex:1; min-width:0; }
+
+  /* Print button */
+  .asm-print-btn {
+    font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700;
+    letter-spacing:0.15em; text-transform:uppercase;
+    background:transparent; border:1px solid var(--rule);
+    color:var(--ink-faint); padding:7px 14px; cursor:pointer;
+    transition:all 0.15s ease; margin-left:auto;
+  }
+  .asm-print-btn:hover { border-color:var(--yellow); color:var(--yellow); }
+
+  @media (max-width:700px) {
+    .asm-section { padding:18px 16px; }
+    .asm-add-section-row { padding:16px; }
+    .asm-sec-name { font-size:17px; }
+  }
+  @media print {
+    body { background:white !important; padding:0 !important; }
+    body::before { display:none !important; }
+    .sheet { box-shadow:none !important; border:none !important; max-width:100% !important; }
+    header, .crew-panel, .test-details, .tab-bar, .edit-banner,
+    .hint-bar, .progress-wrap, footer, .status-bar,
+    .page-task, #page-pack, #page-assembly .asm-add-section-row,
+    .asm-step-actions, .asm-del-btn, .asm-sec-del,
+    .asm-warning-input, .pack-add-row, .move-btns,
+    .remove-task-btn, .task-edit-text, .task-edit-tag { display:none !important; }
+    #page-assembly { display:block !important; }
+    .asm-section { padding:16px 0; border-bottom:1px solid #ccc; page-break-inside:avoid; }
+    .asm-sec-head { margin-bottom:12px; }
+    .asm-sec-num { background:#000 !important; color:#fff !important; -webkit-print-color-adjust:exact; }
+    .asm-sec-name { color:#000 !important; font-size:16px !important; }
+    .asm-step { padding:8px 0; border-top:1px solid #eee; }
+    .asm-step-num { color:#000 !important; font-weight:700; }
+    .asm-step-text { color:#000 !important; opacity:1 !important; text-decoration:none !important; font-size:13px; }
+    .asm-step-check {
+      width:14px !important; height:14px !important;
+      border:1.5px solid #000 !important; background:white !important;
+      -webkit-print-color-adjust:exact;
+    }
+    .asm-step-check::after { display:none !important; }
+    .asm-step-warning {
+      background:#fffbe6 !important; border-left:3px solid #c8970a !important;
+      color:#c8970a !important; font-size:10px !important;
+      -webkit-print-color-adjust:exact;
+    }
+    .print-header {
+      display:block !important; text-align:center;
+      padding-bottom:16px; margin-bottom:16px;
+      border-bottom:2px solid #000;
+    }
+    .print-header h1 { font-size:22px; margin:0 0 4px; }
+    .print-header p  { font-size:11px; color:#666; margin:0; }
+  }
+  .print-header { display:none; }
+
   /* Add task row — only visible in edit mode */
   .add-task-row { display:none; align-items:center; gap:8px; padding:12px 6px 4px; border-top:1px dashed rgba(244,208,63,0.2); margin-top:4px; }
   .sheet.editing .add-task-row { display:flex; }
@@ -658,6 +853,7 @@
   <div class="tab-bar" id="tabBar">
     <button class="tab-btn active" id="tabTask">☰ Task Sheet</button>
     <button class="tab-btn" id="tabPack">✦ Packing List</button>
+    <button class="tab-btn" id="tabAssembly">⚙ Assembly</button>
     <button class="edit-mode-btn" id="editModeBtn">Edit</button>
   </div>
 
@@ -696,6 +892,16 @@
     <main id="main"></main>
   </div><!-- end page-task -->
 
+  <!-- Assembly page -->
+  <div class="page" id="page-assembly">
+    <!-- Print-only header -->
+    <div class="print-header">
+      <h1>PROJECT MARIS — Assembly Instructions</h1>
+      <p id="printMeta"></p>
+    </div>
+    <div id="assemblyContent"></div>
+  </div>
+
   <!-- Packing page -->
   <div class="page" id="page-pack">
     <div id="packContent"></div>
@@ -720,6 +926,12 @@
   const SUPABASE_KEY = "sb_publishable_ab39PpRFYChIXsrYLgurVw_5ijWTWLH";
   const SHEET_VERSION  = "2025-05-05-v2";
 
+
+  const DEFAULT_ASSEMBLY_SECTIONS = [
+    { id:"as1", name:"VBD",         steps:[] },
+    { id:"as2", name:"P&R",         steps:[] },
+    { id:"as3", name:"Full Glider", steps:[] },
+  ];
 
   const DEFAULT_TOOLBOX_GROUPS = [
     { id:"tg1", name:"Skeleton",     items:[] },
@@ -757,7 +969,8 @@
   let toolboxGroups = []; // [{id, name, items:[{id,text}]}]
   let toolboxStates = {};  // { itemId: { checked, by } }
   let carryItems    = {};  // { memberName: [{id, text, there, back}] }
-  let testObjective = "";  // short paragraph describing the test goals
+  let testObjective    = "";
+  let assemblySections = [];
   let currentTab    = "task";
   let editMode      = false;
   let editingBy     = null;  // who currently has edit mode open (from Supabase)
@@ -942,7 +1155,9 @@
     // Never clobber local state while user is editing
     if (editMode) {
       // Still update the editingBy field so we know if someone else is also editing
-      editingBy = rec.editingBy || null;
+      editingBy        = rec.editingBy || null;
+    assemblySections = (rec.assemblySections && rec.assemblySections.length) ? rec.assemblySections : JSON.parse(JSON.stringify(DEFAULT_ASSEMBLY_SECTIONS));
+    assemblyStates   = rec.assemblyStates || {};
       updateEditLockUI();
       return;
     }
@@ -1340,7 +1555,9 @@
       toolboxGroups: row.toolbox_groups || null,
       toolboxStates: row.toolbox_states || {},
       carryItems:    row.carry_items    || {},
-      editingBy:     row.editing_by     || null,
+      editingBy:        row.editing_by          || null,
+      assemblySections: row.assembly_instructions || null,
+      assemblyStates:   row.assembly_states        || {},
       updated:       row.updated_at     || 0
     };
   }
@@ -1359,7 +1576,9 @@
       toolbox_groups: toolboxGroups,
       toolbox_states: toolboxStates,
       carry_items:    carryItems,
-      editing_by:     editMode ? operator : null,
+      editing_by:            editMode ? operator : null,
+      assembly_instructions: assemblySections,
+      assembly_states:        assemblyStates,
       updated_at:     Date.now()
     };
   }
@@ -1378,7 +1597,9 @@
     toolboxStates  = rec.toolboxStates || {};
     carryItems     = rec.carryItems    || {};
     testObjective  = rec.objective     || "";
-    editingBy = rec.editingBy || null;
+    editingBy        = rec.editingBy || null;
+    assemblySections = (rec.assemblySections && rec.assemblySections.length) ? rec.assemblySections : JSON.parse(JSON.stringify(DEFAULT_ASSEMBLY_SECTIONS));
+    assemblyStates   = rec.assemblyStates || {};
     updateEditLockUI();
     if ($("objectiveDisplay"))  $("objectiveDisplay").textContent  = testObjective;
     // Only update the textarea if the user isn't currently typing in it
@@ -1391,7 +1612,8 @@
       if (document.activeElement !== $("fieldLabel"))
         $("fieldLabel").value = rec.label || "Test Day Plan";
     }
-    if (currentTab === "pack") renderPacking();
+    if (currentTab === "pack")     renderPacking();
+    if (currentTab === "assembly") renderAssembly();
   }
 
   function applyFixedOverrides() {
@@ -1534,12 +1756,16 @@
     currentTab = tab;
     document.getElementById("page-task").classList.toggle("active", tab === "task");
     document.getElementById("page-pack").classList.toggle("active", tab === "pack");
+    document.getElementById("page-assembly").classList.toggle("active", tab === "assembly");
     document.getElementById("tabTask").classList.toggle("active", tab === "task");
     document.getElementById("tabPack").classList.toggle("active", tab === "pack");
-    if (tab === "pack") renderPacking();
+    document.getElementById("tabAssembly").classList.toggle("active", tab === "assembly");
+    if (tab === "pack")     renderPacking();
+    if (tab === "assembly") renderAssembly();
   }
-  $("tabTask").addEventListener("click", () => switchTab("task"));
-  $("tabPack").addEventListener("click", () => switchTab("pack"));
+  $("tabTask").addEventListener("click",    () => switchTab("task"));
+  $("tabPack").addEventListener("click",    () => switchTab("pack"));
+  $("tabAssembly").addEventListener("click",() => switchTab("assembly"));
 
   // ── Packing page render ──────────────────────────────
   function renderPacking() {
@@ -1613,7 +1839,7 @@
       delBtn.textContent = "✕";
       delBtn.title = "Delete group";
       delBtn.addEventListener("click", () => {
-        if (group.items.length > 0 && !confirm("Delete group \"" + group.name + "\" and all its tools?")) return;
+        if (group.items.length > 0 && !confirm('Delete ' + group.name + ' and all its tools?')) return;
         group.items.forEach(it => delete toolboxStates[it.id]);
         toolboxGroups.splice(gIdx, 1);
         renderPacking(); scheduleSave();
@@ -1864,6 +2090,270 @@
       sec.appendChild(addRow);
       root.appendChild(sec);
     });
+  }
+
+
+  // ── Assembly instructions render ─────────────────────
+  function renderAssembly() {
+    const root = $("assemblyContent");
+    root.innerHTML = "";
+
+    // Update print meta
+    const pm = $("printMeta");
+    if (pm) pm.textContent = ($("fieldDate") ? $("fieldDate").value : "") + " · " + ($("fieldLabel") ? $("fieldLabel").value : "");
+
+    // Top toolbar — print button + reset checks
+    const toolbar = document.createElement("div");
+    toolbar.style.cssText = "display:flex;align-items:center;gap:10px;padding:14px 36px;border-bottom:1px solid var(--rule);background:var(--surface-2);flex-wrap:wrap;";
+
+    const checkedCount = assemblySections.flatMap(s => s.steps).filter(st => (assemblyStates[st.id]||{}).checked).length;
+    const totalSteps   = assemblySections.flatMap(s => s.steps).length;
+    const progressEl   = document.createElement("span");
+    progressEl.style.cssText = "font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-faint);";
+    progressEl.textContent   = checkedCount + " / " + totalSteps + " steps";
+    toolbar.appendChild(progressEl);
+
+    const resetBtn = document.createElement("button");
+    resetBtn.className = "asm-print-btn";
+    resetBtn.textContent = "Reset Checks";
+    resetBtn.style.cssText = "margin-left:0;";
+    resetBtn.addEventListener("click", () => {
+      if (!confirm("Clear all step checkboxes?")) return;
+      assemblyStates = {};
+      markLocalChange(); renderAssembly(); scheduleSave();
+    });
+    toolbar.appendChild(resetBtn);
+
+    const printBtn = document.createElement("button");
+    printBtn.className = "asm-print-btn";
+    printBtn.textContent = "⎙ Print";
+    printBtn.addEventListener("click", () => {
+      // Switch to assembly tab if not already there, then print
+      switchTab("assembly");
+      setTimeout(() => window.print(), 100);
+    });
+    toolbar.appendChild(printBtn);
+    root.appendChild(toolbar);
+
+    // Sections
+    assemblySections.forEach((sec, sIdx) => {
+      const secEl = document.createElement("div");
+      secEl.className = "asm-section";
+
+      // Section header
+      const head = document.createElement("div");
+      head.className = "asm-sec-head";
+
+      const num = document.createElement("span");
+      num.className = "asm-sec-num";
+      num.textContent = String(sIdx + 1).padStart(2, "0");
+
+      const nameSpan = document.createElement("h2");
+      nameSpan.className = "asm-sec-name";
+      nameSpan.textContent = sec.name;
+
+      const nameInput = document.createElement("input");
+      nameInput.className = "asm-sec-name-input";
+      nameInput.type = "text";
+      nameInput.value = sec.name;
+      nameInput.addEventListener("change", () => {
+        assemblySections[sIdx].name = nameInput.value.trim() || sec.name;
+        markLocalChange(); scheduleSave();
+      });
+      nameInput.addEventListener("click", e => e.stopPropagation());
+
+      const delBtn = document.createElement("button");
+      delBtn.className = "asm-sec-del";
+      delBtn.textContent = "✕";
+      delBtn.title = "Delete section";
+      delBtn.addEventListener("click", () => {
+        if (sec.steps.length > 0 && !confirm("Delete " + sec.name + " and all its steps?")) return;
+        assemblySections.splice(sIdx, 1);
+        markLocalChange(); renderAssembly(); scheduleSave();
+      });
+
+      head.appendChild(num);
+      head.appendChild(nameSpan);
+      head.appendChild(nameInput);
+      head.appendChild(delBtn);
+      secEl.appendChild(head);
+
+      // Steps list
+      const ol = document.createElement("ol");
+      ol.className = "asm-steps";
+
+      if (sec.steps.length === 0) {
+        const empty = document.createElement("li");
+        empty.style.cssText = "padding:8px 4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-faint);letter-spacing:0.08em;";
+        empty.textContent = editMode ? "No steps yet — add one below." : "No steps added yet.";
+        ol.appendChild(empty);
+      }
+
+      sec.steps.forEach((step, stIdx) => {
+        const st = assemblyStates[step.id] || {};
+        const li = document.createElement("li");
+        li.className = "asm-step" + (st.checked ? " checked" : "");
+
+        const stepNum = document.createElement("span");
+        stepNum.className = "asm-step-num";
+        stepNum.textContent = (stIdx + 1) + ".";
+
+        // Checkbox (always visible)
+        const chk = document.createElement("div");
+        chk.className = "asm-step-check";
+        chk.addEventListener("click", e => {
+          e.stopPropagation();
+          if (!ensureOp()) return;
+          assemblyStates[step.id] = st.checked
+            ? { checked: false }
+            : { checked: true, by: operator };
+          markLocalChange(); renderAssembly(); scheduleSave();
+        });
+
+        // Body wrapper (text + warning)
+        const body = document.createElement("div");
+        body.className = "asm-step-body";
+
+        const textEl = document.createElement("span");
+        textEl.className = "asm-step-text";
+        textEl.textContent = step.text;
+
+        const textInput = document.createElement("textarea");
+        textInput.className = "asm-step-input";
+        textInput.value = step.text;
+        textInput.rows = 1;
+        textInput.addEventListener("input", () => {
+          textInput.style.height = "auto";
+          textInput.style.height = textInput.scrollHeight + "px";
+          assemblySections[sIdx].steps[stIdx].text = textInput.value;
+          markLocalChange(); scheduleSave();
+        });
+        textInput.addEventListener("click", e => e.stopPropagation());
+
+        body.appendChild(textEl);
+        body.appendChild(textInput);
+
+        // Warning (show if exists, always show input in edit mode)
+        if (step.warning) {
+          const warnEl = document.createElement("div");
+          warnEl.className = "asm-step-warning";
+          warnEl.textContent = step.warning;
+          body.appendChild(warnEl);
+        }
+        const warnInput = document.createElement("textarea");
+        warnInput.className = "asm-warning-input";
+        warnInput.value = step.warning || "";
+        warnInput.rows = 1;
+        warnInput.placeholder = "⚠ Add warning (optional)…";
+        warnInput.addEventListener("input", () => {
+          warnInput.style.height = "auto";
+          warnInput.style.height = warnInput.scrollHeight + "px";
+          assemblySections[sIdx].steps[stIdx].warning = warnInput.value;
+          markLocalChange(); scheduleSave();
+        });
+        warnInput.addEventListener("click", e => e.stopPropagation());
+        body.appendChild(warnInput);
+
+        // Move + delete buttons
+        const actions = document.createElement("div");
+        actions.className = "asm-step-actions";
+
+        const upBtn = document.createElement("button");
+        upBtn.className = "asm-move-btn";
+        upBtn.textContent = "▲";
+        upBtn.disabled = stIdx === 0;
+        upBtn.addEventListener("click", e => {
+          e.stopPropagation();
+          const steps = assemblySections[sIdx].steps;
+          [steps[stIdx - 1], steps[stIdx]] = [steps[stIdx], steps[stIdx - 1]];
+          markLocalChange(); renderAssembly(); scheduleSave();
+        });
+
+        const dnBtn = document.createElement("button");
+        dnBtn.className = "asm-move-btn";
+        dnBtn.textContent = "▼";
+        dnBtn.disabled = stIdx === sec.steps.length - 1;
+        dnBtn.addEventListener("click", e => {
+          e.stopPropagation();
+          const steps = assemblySections[sIdx].steps;
+          [steps[stIdx], steps[stIdx + 1]] = [steps[stIdx + 1], steps[stIdx]];
+          markLocalChange(); renderAssembly(); scheduleSave();
+        });
+
+        const delStep = document.createElement("button");
+        delStep.className = "asm-del-btn";
+        delStep.textContent = "✕";
+        delStep.addEventListener("click", e => {
+          e.stopPropagation();
+          assemblySections[sIdx].steps.splice(stIdx, 1);
+          delete assemblyStates[step.id];
+          markLocalChange(); renderAssembly(); scheduleSave();
+        });
+
+        actions.appendChild(upBtn);
+        actions.appendChild(dnBtn);
+
+        li.appendChild(chk);
+        li.appendChild(stepNum);
+        li.appendChild(body);
+        li.appendChild(actions);
+        li.appendChild(delStep);
+        ol.appendChild(li);
+      });
+      secEl.appendChild(ol);
+
+      // Add step row
+      const addRow = document.createElement("div");
+      addRow.className = "pack-add-row";
+      const addInput = document.createElement("input");
+      addInput.className = "pack-add-input";
+      addInput.type = "text";
+      addInput.placeholder = "Add step to " + sec.name + "…";
+      const addBtn = document.createElement("button");
+      addBtn.className = "pack-add-btn";
+      addBtn.textContent = "+";
+      const doAddStep = () => {
+        if (!ensureOp()) return;
+        const text = addInput.value.trim(); if (!text) return;
+        assemblySections[sIdx].steps.push({ id: "st_" + Date.now(), text, warning: "" });
+        addInput.value = "";
+        markLocalChange(); renderAssembly(); scheduleSave();
+        setTimeout(() => {
+          const inputs = root.querySelectorAll(".pack-add-input");
+          if (inputs[sIdx]) inputs[sIdx].focus();
+        }, 0);
+      };
+      addBtn.addEventListener("click", doAddStep);
+      addInput.addEventListener("keydown", e => { if (e.key === "Enter") doAddStep(); });
+      addRow.appendChild(addInput);
+      addRow.appendChild(addBtn);
+      secEl.appendChild(addRow);
+      root.appendChild(secEl);
+    });
+
+    // Add new section row
+    const addSecRow = document.createElement("div");
+    addSecRow.className = "asm-add-section-row";
+    const addSecInput = document.createElement("input");
+    addSecInput.className = "pack-add-input";
+    addSecInput.type = "text";
+    addSecInput.placeholder = "New section name…";
+    addSecInput.style.maxWidth = "240px";
+    const addSecBtn = document.createElement("button");
+    addSecBtn.className = "pack-add-btn";
+    addSecBtn.textContent = "+";
+    const doAddSec = () => {
+      if (!ensureOp()) return;
+      const name = addSecInput.value.trim(); if (!name) return;
+      assemblySections.push({ id: "as_" + Date.now(), name, steps: [] });
+      addSecInput.value = "";
+      markLocalChange(); renderAssembly(); scheduleSave();
+    };
+    addSecBtn.addEventListener("click", doAddSec);
+    addSecInput.addEventListener("keydown", e => { if (e.key === "Enter") doAddSec(); });
+    addSecRow.appendChild(addSecInput);
+    addSecRow.appendChild(addSecBtn);
+    root.appendChild(addSecRow);
   }
 
   // ── Name picker ────────────────────────────────────
