@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Project Maris</title>
-<link rel="icon" type="image/png" href="maris_favicon.png?v=2" />
+<link rel="icon" type="image/png" href="maris_favicon.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&family=Archivo+Black&display=swap" rel="stylesheet">
@@ -565,7 +565,8 @@
     background:var(--bg); border:1px solid var(--rule);
     padding:4px 8px; outline:none; display:none;
     font-family:'Space Grotesk',sans-serif;
-    transition:border-color 0.15s; min-width:0; resize:none;
+    transition:border-color 0.15s; min-width:0;
+    resize:vertical; overflow:hidden; min-height:28px;
   }
   .asm-step-input:focus { border-color:var(--yellow); }
   .sheet.editing .asm-step-text  { display:none; }
@@ -587,12 +588,14 @@
   .asm-move-btn:disabled { opacity:0.2; cursor:default; }
   .asm-move-btn:disabled:hover { border-color:var(--rule); color:var(--ink-faint); background:transparent; }
   .asm-del-btn {
+    display:none; /* only show in edit mode */
     background:transparent; border:1px solid var(--rule);
     color:var(--ink-faint); font-size:10px;
     width:22px; height:22px; cursor:pointer;
-    display:flex; align-items:center; justify-content:center;
+    align-items:center; justify-content:center;
     transition:all 0.12s; margin-top:2px; flex-shrink:0;
   }
+  .sheet.editing .asm-del-btn { display:flex; }
   .asm-del-btn:hover { border-color:var(--red); color:var(--red); }
 
   /* Add section row */
@@ -2222,6 +2225,11 @@
         textInput.className = "asm-step-input";
         textInput.value = step.text;
         textInput.rows = 1;
+        // Auto-expand to show full content immediately
+        setTimeout(() => {
+          textInput.style.height = "auto";
+          textInput.style.height = textInput.scrollHeight + "px";
+        }, 0);
         textInput.addEventListener("input", () => {
           textInput.style.height = "auto";
           textInput.style.height = textInput.scrollHeight + "px";
