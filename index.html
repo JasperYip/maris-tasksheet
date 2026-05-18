@@ -561,12 +561,12 @@
   }
 
   .asm-step-input {
-    flex:1; font-size:15px; line-height:1.5; color:var(--ink);
+    width:100%; display:none; font-size:15px; line-height:1.5; color:var(--ink);
     background:var(--bg); border:1px solid var(--rule);
-    padding:4px 8px; outline:none; display:none;
+    padding:4px 8px; outline:none;
     font-family:'Space Grotesk',sans-serif;
-    transition:border-color 0.15s; min-width:0;
-    resize:vertical; overflow:hidden; min-height:28px;
+    transition:border-color 0.15s;
+    resize:none; overflow:hidden; min-height:28px; box-sizing:border-box;
   }
   .asm-step-input:focus { border-color:var(--yellow); }
   .sheet.editing .asm-step-text  { display:none; }
@@ -635,15 +635,17 @@
     background:rgba(244,208,63,0.04); border:1px dashed var(--yellow-dim);
     color:var(--yellow); font-family:'JetBrains Mono',monospace;
     font-size:11px; padding:6px 10px; outline:none; resize:none;
-    transition:border-color 0.15s;
+    transition:border-color 0.15s; box-sizing:border-box;
   }
-  .asm-warning-input::placeholder { color:var(--yellow-dim); opacity:0.6; }
+  .asm-warning-input::placeholder { color:var(--yellow-dim); opacity:0.5; }
   .asm-warning-input:focus { border-color:var(--yellow); }
   .sheet.editing .asm-step-warning { display:none; }
-  .sheet.editing .asm-warning-input { display:block; }
+  /* Only show warning input when it has content or step is hovered */
+  .sheet.editing .asm-warning-input.has-content { display:block; }
+  .sheet.editing li.asm-step:hover .asm-warning-input { display:block; }
 
   /* Step body wrapper */
-  .asm-step-body { flex:1; min-width:0; }
+  .asm-step-body { flex:1; min-width:0; width:0; }
 
   /* Print button */
   .asm-print-btn {
@@ -2127,13 +2129,14 @@
           body.appendChild(warnEl);
         }
         const warnInput = document.createElement("textarea");
-        warnInput.className = "asm-warning-input";
+        warnInput.className = "asm-warning-input" + (step.warning ? " has-content" : "");
         warnInput.value = step.warning || "";
         warnInput.rows = 1;
         warnInput.placeholder = "⚠ Add warning (optional)…";
         warnInput.addEventListener("input", () => {
           warnInput.style.height = "auto";
           warnInput.style.height = warnInput.scrollHeight + "px";
+          warnInput.classList.toggle("has-content", warnInput.value.length > 0);
           assemblySections[sIdx].steps[stIdx].warning = warnInput.value;
           markLocalChange(); scheduleSave();
         });
