@@ -38,7 +38,6 @@
     overflow-x:hidden;
   }
 
-  /* Subtle deep-sea ambient gradient + grid */
   body::before {
     content:"";
     position:fixed; inset:0; z-index:-2;
@@ -58,10 +57,9 @@
     -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, black, transparent 75%);
   }
   @media (max-width:700px) {
-    body::after { display:none; } /* skip the grid overlay on mobile — keeps scroll smooth */
+    body::after { display:none; }
   }
 
-  /* ── Header ── */
   header {
     display:flex; align-items:center; justify-content:space-between;
     padding:22px 36px;
@@ -82,7 +80,6 @@
     letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-faint);
   }
 
-  /* ── Hero ── */
   .hero {
     padding:64px 24px 40px;
     text-align:center;
@@ -108,7 +105,6 @@
     max-width:560px; margin:0 auto;
   }
 
-  /* ── Video ── */
   .video-section { padding:32px 24px 80px; }
   .video-wrap {
     max-width:1100px; margin:0 auto;
@@ -135,10 +131,10 @@
     width:100%; height:auto; max-height:80vh;
     display:block; background:#000;
   }
-  /* Fallback box shape only while metadata hasn't loaded yet */
+  /* Before metadata loads: lock to 16:9 box and make the poster cover it */
   .video-frame.loading { aspect-ratio:16/9; }
+  .video-frame.loading video { height:100%; object-fit:cover; }
 
-  /* Play overlay */
   .play-overlay {
     position:absolute; inset:0;
     display:flex; align-items:center; justify-content:center;
@@ -181,7 +177,6 @@
   }
   .video-caption b { color:var(--cyan); font-weight:500; }
 
-  /* ── Specs ── */
   .specs-section { padding:0 24px 80px; }
   .specs-head {
     max-width:1100px; margin:0 auto 32px;
@@ -230,7 +225,6 @@
     color:var(--ink-dim); line-height:1.5;
   }
 
-  /* ── Highlights ── */
   .highlights-section { padding:0 24px 90px; }
   .highlights-grid {
     max-width:1100px; margin:0 auto;
@@ -263,7 +257,6 @@
     color:var(--ink-dim); line-height:1.6;
   }
 
-  /* ── Footer ── */
   footer {
     border-top:1px solid var(--rule);
     padding:28px 36px;
@@ -273,7 +266,6 @@
   }
   footer .accent { color:var(--cyan); }
 
-  /* ── Mobile ── */
   @media (max-width:700px) {
     header { padding:14px 16px; }
     .brand img { height:22px; }
@@ -318,7 +310,6 @@
     footer { padding:18px 16px; flex-direction:column; align-items:flex-start; gap:8px; font-size:9px; }
   }
 
-  /* Very small phones */
   @media (max-width:380px) {
     .specs-grid { grid-template-columns:1fr; }
     h1 { font-size:32px; }
@@ -343,7 +334,7 @@
 
   <section class="video-section">
     <div class="video-wrap">
-      <div class="video-frame">
+      <div class="video-frame loading">
         <video id="marisVideo" playsinline webkit-playsinline preload="metadata" poster="maris_glider.png">
           <source src="maris_demo.mp4" type="video/mp4" />
           Your browser does not support the video tag.
@@ -442,7 +433,6 @@
     const overlay = document.getElementById('playOverlay');
     const frame = document.querySelector('.video-frame');
 
-    // Show 16:9 placeholder box until we know the video's real dimensions
     frame.classList.add('loading');
     video.addEventListener('loadedmetadata', () => {
       frame.classList.remove('loading');
