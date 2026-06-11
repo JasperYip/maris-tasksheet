@@ -1,0 +1,2312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Project Maris</title>
+<link rel="icon" type="image/png" href="maris_favicon.png?v=2" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&family=Archivo+Black&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a; --surface: #111110; --surface-1: #161613; --surface-2: #1f1f1b;
+    --ink: #f5f1e8; --ink-dim: #a8a499; --ink-faint: #5a564d;
+    --rule: #2a2a25; --yellow: #f4d03f; --yellow-bright: #ffd91c;
+    --yellow-dim: #8a7a1f; --green: #4caf7d; --red: #e05252;
+    --grid: rgba(244,208,63,0.04);
+  }
+
+  /* ── Light mode ── */
+  body.light {
+    --bg: #f0ede6; --surface: #fefcf8; --surface-1: #f0ece3; --surface-2: #e8e3d8;
+    --ink: #1a1a14; --ink-dim: #5a5648; --ink-faint: #a8a090;
+    --rule: #d4cfc4; --yellow: #c8970a; --yellow-bright: #e0a800;
+    --yellow-dim: #a07800; --green: #2e7d52; --red: #c0392b;
+    --grid: rgba(0,0,0,0.04);
+  }
+  body.light .progress-fill-active { background: repeating-linear-gradient(-45deg,#ccc9be 0 8px,#bab6aa 8px 16px); }
+
+
+  /* Theme toggle button */
+  .theme-btn {
+    font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700;
+    letter-spacing:0.12em; text-transform:uppercase;
+    background:transparent; border:1px solid var(--rule);
+    color:var(--ink-faint); padding:5px 10px; cursor:pointer;
+    transition:all 0.15s ease; display:flex; align-items:center; gap:6px;
+  }
+  .theme-btn:hover { border-color:var(--yellow); color:var(--yellow); }
+  .theme-icon { font-size:12px; }
+  * { box-sizing: border-box; }
+  html,body { margin:0; padding:0; background:var(--bg); color:var(--ink); font-family:'Space Grotesk',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  body { background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px); background-size:32px 32px; min-height:100vh; padding:32px 16px 80px; }
+  body::before { content:""; position:fixed; inset:0; background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,0.5) 100%); pointer-events:none; z-index:0; }
+
+  .sheet { max-width:920px; margin:0 auto; background:var(--surface); border:1px solid var(--rule); position:relative; z-index:1; transition:border-color 0.3s ease; }
+  .sheet.editing { border-color: var(--yellow); }
+
+  /* ── Tab bar ── */
+  .tab-bar {
+    display:flex; border-bottom:1px solid var(--rule);
+    background:var(--surface-2); padding:0; gap:0; align-items:stretch;
+  }
+  .tab-btn {
+    font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700;
+    letter-spacing:0.15em; text-transform:uppercase;
+    background:transparent; border:none; border-bottom:2px solid transparent;
+    color:var(--ink-faint); padding:12px 18px; cursor:pointer;
+    transition:all 0.15s ease; margin-bottom:-1px;
+  }
+  .tab-btn:first-child { padding-left:24px; }
+  .tab-btn:hover { color:var(--ink); }
+  .tab-btn.active { color:var(--yellow); border-bottom-color:var(--yellow); }
+
+  /* ── Page containers ── */
+  .page { display:none; }
+  .page.active { display:block; }
+
+  /* ── Packing page ── */
+  .pack-section { padding:24px 36px; border-bottom:1px dashed var(--rule); }
+  .pack-section:last-child { border-bottom:none; }
+  .pack-sec-head {
+    display:flex; align-items:baseline; gap:14px;
+    margin-bottom:16px; flex-wrap:wrap;
+  }
+  .pack-sec-num {
+    font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700;
+    background:var(--yellow); color:var(--bg); padding:4px 9px; letter-spacing:0.12em;
+    flex-shrink:0;
+  }
+  .pack-sec-num.toolbox { background:var(--ink); color:var(--surface); }
+  .pack-sec-title {
+    font-family:'Archivo Black',sans-serif; font-size:20px;
+    margin:0; text-transform:uppercase; color:var(--ink);
+  }
+  .pack-sec-sub {
+    font-family:'JetBrains Mono',monospace; font-size:10px;
+    color:var(--ink-faint); letter-spacing:0.1em; text-transform:uppercase;
+    margin-left:auto;
+  }
+
+  /* Pack items list */
+  ul.pack-items { list-style:none; padding:0; margin:0; }
+  li.pack-item {
+    display:flex; align-items:center; gap:14px;
+    padding:11px 4px; border-top:1px solid var(--rule);
+    position:relative; overflow:hidden;
+    user-select:none; -webkit-user-select:none;
+    touch-action:manipulation;
+  }
+  li.pack-item:first-child { border-top:none; }
+
+  .pack-check {
+    flex-shrink:0; width:22px; height:22px;
+    border:1.5px solid var(--ink-dim); background:var(--bg);
+    position:relative; cursor:pointer; transition:all 0.2s ease;
+  }
+  .pack-check::after {
+    content:"✓"; position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--bg); font-size:15px; font-weight:700;
+    transform:scale(0); transition:transform 0.2s cubic-bezier(.5,1.6,.4,1);
+  }
+  li.pack-item.checked .pack-check { background:var(--green); border-color:var(--green); }
+  li.pack-item.checked .pack-check::after { transform:scale(1); }
+  li.pack-item.checked .pack-item-text {
+    color:var(--ink-faint); text-decoration:line-through;
+    text-decoration-thickness:1.5px; text-decoration-color:var(--green);
+    opacity:0.6;
+  }
+
+  /* Carry items — there/back dual check */
+  .carry-checks { display:flex; gap:8px; flex-shrink:0; margin-left:auto; }
+  .carry-check-wrap {
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+  }
+  .carry-check-label {
+    font-family:'JetBrains Mono',monospace; font-size:7px;
+    letter-spacing:0.1em; text-transform:uppercase; color:var(--ink-faint);
+  }
+  .carry-check {
+    width:22px; height:22px; border:1.5px solid var(--ink-dim);
+    background:var(--bg); position:relative; cursor:pointer;
+    transition:all 0.2s ease; flex-shrink:0;
+  }
+  .carry-check::after {
+    content:"✓"; position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--bg); font-size:14px; font-weight:700;
+    transform:scale(0); transition:transform 0.2s cubic-bezier(.5,1.6,.4,1);
+  }
+  .carry-check.there-done { background:var(--yellow); border-color:var(--yellow); }
+  .carry-check.back-done  { background:var(--green);  border-color:var(--green);  }
+  .carry-check.there-done::after, .carry-check.back-done::after { transform:scale(1); }
+
+  li.pack-item-text { flex:1; font-size:15px; line-height:1.4; color:var(--ink); }
+
+  .pack-item-text { flex:1; font-size:15px; line-height:1.4; color:var(--ink); min-width:0; }
+  .pack-item-by {
+    font-family:'JetBrains Mono',monospace; font-size:8px;
+    color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.08em;
+    flex-shrink:0;
+  }
+
+  /* Add item row */
+  .pack-add-row {
+    display:none; align-items:center; gap:8px;
+    padding:10px 4px 2px; border-top:1px dashed rgba(244,208,63,0.2);
+    margin-top:4px;
+  }
+  .sheet.editing .pack-add-row { display:flex; }
+  .pack-add-input {
+    flex:1; background:var(--bg); border:1px dashed var(--rule);
+    color:var(--ink); padding:8px 12px;
+    font-family:'Space Grotesk',sans-serif; font-size:14px;
+    outline:none; transition:border-color 0.15s;
+  }
+  .pack-add-input::placeholder { color:var(--ink-faint); }
+  .pack-add-input:focus { border-color:var(--yellow); }
+  .pack-add-btn {
+    background:transparent; border:1px solid var(--rule); color:var(--ink-faint);
+    font-family:'JetBrains Mono',monospace; font-size:20px;
+    width:36px; height:36px; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; transition:all 0.15s; flex-shrink:0;
+  }
+  .pack-add-btn:hover { border-color:var(--yellow); color:var(--yellow); }
+  .pack-remove-btn {
+    display:none; background:transparent; border:1px solid var(--rule);
+    color:var(--ink-faint); font-size:12px; width:24px; height:24px;
+    cursor:pointer; align-items:center; justify-content:center;
+    transition:all 0.15s; flex-shrink:0;
+  }
+  .sheet.editing .pack-remove-btn { display:flex; }
+  .pack-remove-btn:hover { border-color:var(--red); color:var(--red); }
+
+  /* Pack progress */
+  .pack-progress {
+    font-family:'JetBrains Mono',monospace; font-size:10px;
+    letter-spacing:0.1em; text-transform:uppercase;
+    color:var(--ink-faint); margin-left:auto; padding:3px 8px;
+    border:1px solid var(--rule);
+  }
+
+  /* Member section header */
+  .pack-member-head {
+    display:flex; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap;
+  }
+  .pack-member-name {
+    font-family:'Archivo Black',sans-serif; font-size:18px;
+    text-transform:uppercase; color:var(--ink); margin:0;
+  }
+  .pack-member-name.is-me { color:var(--yellow); }
+
+  @media (max-width:700px) {
+    .pack-section { padding:18px 16px; }
+    .tab-bar { padding:0; }
+    .tab-btn { padding:10px 12px; font-size:9px; }
+    .tab-btn:first-child { padding-left:16px; }
+    .edit-mode-btn { padding:10px 12px; font-size:9px; }
+    .pack-sec-title { font-size:17px; }
+  }
+
+
+  /* ── Status bar ── */
+  .status-bar { display:flex; justify-content:space-between; align-items:center; padding:8px 24px; background:var(--surface-1); border-bottom:1px solid var(--rule); font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.15em; text-transform:uppercase; color:var(--ink-dim); }
+  .status-bar .left,.status-bar .right { display:flex; align-items:center; gap:14px; }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--ink-faint); transition:all 0.3s ease; }
+  .dot.live { background:var(--yellow-bright); box-shadow:0 0 8px var(--yellow-bright); }
+  .dot.offline { background:var(--red); }
+  .dot.syncing { background:var(--yellow); animation:pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ── Crew panel ── */
+  .crew-panel { padding:14px 36px; border-bottom:1px solid var(--rule); background:var(--bg); display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .crew-label { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-faint); margin-right:4px; flex-shrink:0; }
+  .crew-chip { display:flex; align-items:center; gap:6px; padding:5px 10px; border:1px solid var(--rule); background:var(--surface); font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-dim); }
+  .crew-chip.available { border-color:var(--green); color:var(--ink); }
+  .crew-chip.busy { border-color:var(--red); color:var(--ink); }
+  .crew-chip.me { background:rgba(244,208,63,0.06); border-color:var(--yellow); color:var(--yellow); }
+  .crew-status-dot { width:6px; height:6px; border-radius:50%; background:var(--ink-faint); flex-shrink:0; }
+  .crew-chip.available .crew-status-dot { background:var(--green); box-shadow:0 0 6px var(--green); }
+  .crew-chip.busy .crew-status-dot { background:var(--red); animation:pulse 3s infinite; }
+  .crew-chip.me .crew-status-dot { background:var(--yellow); box-shadow:0 0 6px var(--yellow); }
+  .crew-tasks { font-size:9px; color:var(--red); letter-spacing:0.05em; }
+  .crew-chip.me .crew-tasks { color:var(--yellow); }
+
+  /* ── Header — title only ── */
+  header {
+    padding: 28px 36px 20px;
+    border-bottom: 1px solid var(--rule);
+    position: relative;
+    background: linear-gradient(180deg, transparent 0%, rgba(244,208,63,0.02) 100%), var(--surface);
+  }
+  header::before, header::after { content:""; position:absolute; width:10px; height:10px; border:1px solid var(--yellow); opacity:0.4; }
+  header::before { bottom:10px; left:14px; border-right:none; border-top:none; }
+  header::after  { bottom:10px; right:14px; border-left:none; border-top:none; }
+  .corner-mark { position:absolute; top:20px; right:80px; height:32px; width:auto; opacity:0.8; filter:drop-shadow(0 0 10px rgba(244,208,63,0.12)); pointer-events:none; z-index:2; }
+
+  .edit-mode-btn {
+    font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700;
+    letter-spacing:0.15em; text-transform:uppercase;
+    background:transparent; border:none; border-left:1px solid var(--rule);
+    border-bottom:2px solid transparent;
+    color:var(--ink-faint); padding:12px 18px; cursor:pointer;
+    transition:all 0.15s ease; margin-left:auto; margin-bottom:-1px;
+  }
+  .edit-mode-btn:hover { color:var(--yellow); }
+  .edit-mode-btn.active { background:var(--yellow); color:var(--bg); border-bottom-color:var(--yellow); }
+
+  /* Edit mode banner */
+  .edit-banner {
+    display:none; padding:10px 36px;
+    background:rgba(244,208,63,0.08);
+    border-bottom:1px solid var(--yellow);
+    font-family:'JetBrains Mono',monospace; font-size:10px;
+    letter-spacing:0.15em; text-transform:uppercase;
+    color:var(--yellow);
+    align-items:center; gap:12px;
+  }
+  .sheet.editing .edit-banner { display:flex; }
+  .edit-banner-dot { width:6px; height:6px; border-radius:50%; background:var(--yellow); animation:pulse 1.2s infinite; flex-shrink:0; }
+
+  /* ── Header typography ── */
+  .doc-id { font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:10px; }
+  .doc-id span { color:var(--yellow); font-weight:700; }
+  h1 { font-family:'Archivo Black',sans-serif; font-size:clamp(36px,7vw,64px); line-height:0.92; margin:0 0 6px; letter-spacing:-0.03em; text-transform:uppercase; color:var(--ink); }
+  h1 .accent { color:var(--yellow); }
+  .tagline { font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.15em; text-transform:uppercase; color:var(--ink-dim); }
+  .stamp { position:absolute; top:24px; right:14px; border:2px solid var(--yellow); color:var(--yellow); padding:6px 12px; font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.22em; transform:rotate(-3deg); background:rgba(244,208,63,0.05); }
+  .stamp.complete { background:var(--yellow); border-color:var(--yellow); color:var(--bg); }
+
+  /* ── Test details card ── */
+  .test-details { padding:12px 36px; border-bottom:1px solid var(--rule); background:var(--surface-1); }
+  .test-details-row { display:flex; flex-wrap:wrap; gap:16px; margin-bottom:10px; align-items:flex-end; }
+  .test-detail-item { display:flex; flex-direction:column; gap:5px; }
+  .test-detail-label { font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-faint); }
+  .test-detail-val { font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.06em; color:var(--ink); }
+
+  /* Editable inline fields — used in test details */
+  .inline-field {
+    font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.08em;
+    text-transform:uppercase; color:var(--yellow); font-weight:700;
+    background:transparent; border:none; outline:none;
+    cursor:default; pointer-events:none;
+    padding:2px 0; min-width:20px;
+    border-bottom:1px solid transparent;
+    transition:border-color 0.15s, background 0.15s;
+  }
+  .inline-field.label-field { color:var(--ink); font-weight:400; }
+  .sheet.editing .inline-field { cursor:text; pointer-events:all; border-bottom-color:var(--yellow-dim); }
+  .sheet.editing .inline-field:focus { border-bottom-color:var(--yellow); }
+
+  /* Test objective */
+  .test-objective-wrap { display:flex; flex-direction:column; gap:6px; }
+  .test-objective-text { font-family:'Space Grotesk',sans-serif; font-size:13px; line-height:1.6; color:var(--ink-dim); min-height:20px; white-space:pre-wrap; }
+  .test-objective-text:empty::before { content:"No objective set."; color:var(--ink-faint); font-style:italic; font-size:13px; }
+  .test-objective-input {
+    display:none; width:100%; background:var(--bg); border:1px solid var(--rule);
+    color:var(--ink); font-family:'Space Grotesk',sans-serif; font-size:15px;
+    line-height:1.6; padding:10px 12px; resize:vertical; min-height:80px;
+    outline:none; transition:border-color 0.15s;
+  }
+  .test-objective-input:focus { border-color:var(--yellow); }
+  .sheet.editing .test-objective-text  { display:none; }
+  .sheet.editing .test-objective-input { display:block; }
+
+  /* ── Sticky tab bar ── */
+  .tab-bar {
+    display:flex; border-bottom:1px solid var(--rule);
+    background:var(--surface-2);
+    padding:0; gap:0; align-items:stretch;
+    position:sticky; top:0; z-index:50;
+  }
+  .tab-btn {
+    font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700;
+    letter-spacing:0.15em; text-transform:uppercase;
+    background:transparent; border:none; border-bottom:2px solid transparent;
+    color:var(--ink-faint); padding:12px 18px; cursor:pointer;
+    transition:all 0.15s ease; margin-bottom:-1px;
+  }
+  .tab-btn:first-child { padding-left:24px; }
+  .tab-btn:hover { color:var(--ink); }
+  .tab-btn.active { color:var(--yellow); border-bottom-color:var(--yellow); }
+
+  /* ── Progress ── */
+  .progress-wrap { padding:22px 36px; border-bottom:1px solid var(--rule); display:flex; align-items:center; gap:22px; background:var(--surface-1); }
+  .progress-track { flex:1; height:16px; background:var(--bg); border:1px solid var(--rule); position:relative; overflow:hidden; }
+  .progress-track::before { content:""; position:absolute; inset:0; background-image:repeating-linear-gradient(90deg,transparent 0 23px,var(--rule) 23px 24px); pointer-events:none; z-index:2; }
+  .progress-fill-active { position:absolute; top:0; bottom:0; left:0; width:0%; background:repeating-linear-gradient(-45deg,#3a3a35 0 8px,#2a2a25 8px 16px); transition:width 0.5s cubic-bezier(.2,.8,.2,1); z-index:0; }
+  .progress-fill { position:absolute; top:0; bottom:0; left:0; width:0%; background:var(--yellow); background-image:repeating-linear-gradient(-45deg,var(--yellow) 0 8px,var(--yellow-bright) 8px 16px); transition:width 0.5s cubic-bezier(.2,.8,.2,1); box-shadow:0 0 12px rgba(244,208,63,0.3); z-index:1; }
+  .progress-label { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700; letter-spacing:0.1em; min-width:110px; text-align:right; color:var(--ink); }
+  .progress-label .pct { color:var(--yellow); margin-left:8px; }
+
+  /* ── Hint bar ── */
+  .hint-bar { padding:8px 36px; background:var(--surface-1); border-bottom:1px solid var(--rule); font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-faint); display:flex; gap:24px; flex-wrap:wrap; }
+  .hint-bar span { display:flex; align-items:center; gap:6px; }
+  .hint-key { border:1px solid var(--ink-faint); padding:1px 5px; font-size:8px; color:var(--ink-dim); }
+
+  /* ── Main / sections ── */
+  main { padding:8px 36px 36px; position:relative; }
+  section { padding:26px 0 8px; border-bottom:1px dashed var(--rule); }
+  section:last-of-type { border-bottom:none; }
+  .sec-head { display:flex; align-items:baseline; gap:16px; margin-bottom:16px; flex-wrap:wrap; }
+  .sec-num { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; background:var(--yellow); color:var(--bg); padding:4px 9px; letter-spacing:0.12em; flex-shrink:0; }
+  .sec-title { font-family:'Archivo Black',sans-serif; font-size:22px; margin:0; text-transform:uppercase; color:var(--ink); }
+  .sec-time { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--ink-faint); letter-spacing:0.12em; text-transform:uppercase; margin-left:auto; padding:4px 8px; border:1px solid var(--rule); }
+
+  ul.tasks { list-style:none; padding:0; margin:0; }
+  li.task { display:flex; align-items:flex-start; gap:16px; padding:14px 6px; border-top:1px solid var(--rule); cursor:pointer; transition:background 0.15s ease,padding-left 0.15s ease; position:relative; user-select:none; -webkit-user-select:none; touch-action:manipulation; }
+  li.task:first-child { border-top:none; }
+
+  /* Normal hover only when NOT in edit mode */
+  .sheet:not(.editing) li.task:hover { background:rgba(244,208,63,0.04); padding-left:12px; }
+  .sheet:not(.editing) li.task:hover::before { content:">"; position:absolute; left:0; top:14px; color:var(--yellow); font-family:'JetBrains Mono',monospace; font-weight:700; }
+  /* In edit mode, tasks aren't clickable */
+  .sheet.editing li.task { cursor:default; }
+  .sheet.editing li.task:hover { background:transparent; padding-left:6px; }
+
+  .check-box { flex-shrink:0; width:22px; height:22px; border:1.5px solid var(--ink-dim); background:var(--bg); margin-top:1px; position:relative; transition:all 0.2s ease; }
+  .sheet:not(.editing) li.task:hover .check-box { border-color:var(--yellow); }
+  .check-box::after { content:"✓"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--bg); font-size:16px; font-weight:700; transform:scale(0); transition:transform 0.25s cubic-bezier(.5,1.6,.4,1); }
+  li.task.done .check-box { background:var(--yellow); border-color:var(--yellow); }
+  li.task.done .check-box::after { transform:scale(1); }
+  li.task.active .check-box {
+    border-color:var(--yellow);
+    box-shadow: 0 0 6px rgba(244,208,63,0.3);
+    position:relative;
+  }
+  li.task.active .check-box::before {
+    content:"";
+    position:absolute; inset:-3px;
+    border:2px solid var(--yellow);
+    opacity:0;
+    animation: ring-pulse 2s ease-in-out infinite;
+    will-change: opacity;
+  }
+  @keyframes ring-pulse { 0%,100%{opacity:0} 50%{opacity:0.7} }
+  li.task.active .check-box::after { content:"…"; font-size:11px; letter-spacing:-2px; color:var(--yellow); transform:scale(1); }
+
+  /* Mine = task I personally claimed — shown in red so I know it's on me */
+  li.task.active.mine { background: rgba(224,82,82,0.04); }
+  li.task.active.mine .check-box { border-color:var(--red); box-shadow:0 0 6px rgba(224,82,82,0.3); }
+  li.task.active.mine .check-box::before { border-color:var(--red); }
+  li.task.active.mine .check-box::after { color:var(--red); }
+  li.task.active.mine .task-text { color:var(--red); opacity:0.9; }
+  li.task.active.mine .worker-chip.is-me { background:var(--red); }
+
+
+
+  .task-text { flex:1; font-size:16px; line-height:1.45; color:var(--ink); transition:color 0.2s ease,opacity 0.2s ease; }
+  li.task.done .task-text { color:var(--ink-faint); text-decoration:line-through; text-decoration-thickness:1.5px; text-decoration-color:var(--yellow); opacity:0.6; }
+  li.task.active .task-text { color:var(--yellow); opacity:0.9; }
+
+  .task-meta { display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0; padding-left:14px; border-left:1px solid var(--rule); min-width:110px; }
+  .task-tag { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.12em; color:var(--ink-faint); text-transform:uppercase; }
+  .task-by { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.1em; color:var(--yellow-dim); text-transform:uppercase; }
+  .worker-chips { display:flex; flex-wrap:wrap; gap:3px; justify-content:flex-end; margin-top:2px; }
+  .worker-chip { font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:0.08em; text-transform:uppercase; color:var(--bg); background:var(--yellow); padding:2px 5px; }
+
+
+  /* Swipe to done / undo */
+  li.task { overflow:hidden; }
+  .swipe-bg-right {
+    position:absolute; inset:0; left:0;
+    background:var(--yellow);
+    display:flex; align-items:center; padding-left:20px;
+    font-family:'JetBrains Mono',monospace; font-size:11px;
+    font-weight:700; letter-spacing:0.15em; text-transform:uppercase;
+    color:var(--bg); pointer-events:none; opacity:0;
+  }
+  .swipe-bg-left {
+    position:absolute; inset:0; right:0;
+    background:var(--surface-2);
+    display:flex; align-items:center; justify-content:flex-end; padding-right:20px;
+    font-family:'JetBrains Mono',monospace; font-size:11px;
+    font-weight:700; letter-spacing:0.15em; text-transform:uppercase;
+    color:var(--red); border-left:1px solid var(--red); pointer-events:none; opacity:0;
+  }
+  .task-inner {
+    display:flex; align-items:flex-start; gap:16px;
+    flex:1; min-width:0;
+    will-change:transform;
+    transition:transform 0.15s ease;
+  }
+  .remove-task-btn { display:none; flex-shrink:0; background:transparent; border:1px solid var(--rule); color:var(--ink-faint); font-family:'JetBrains Mono',monospace; font-size:12px; width:26px; height:26px; cursor:pointer; align-items:center; justify-content:center; margin-top:1px; transition:all 0.15s; }
+  .sheet.editing .remove-task-btn { display:flex; }
+  .remove-task-btn:hover { border-color:var(--red); color:var(--red); }
+
+  /* Drag handle */
+  /* Up/down move buttons — replace drag handle */
+  .move-btns { display:none; flex-direction:column; gap:1px; flex-shrink:0; margin-top:1px; }
+  .sheet.editing .move-btns { display:flex; }
+  .move-btn { background:transparent; border:1px solid var(--rule); color:var(--ink-faint); font-size:10px; width:22px; height:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.12s; line-height:1; padding:0; }
+  .move-btn:hover { border-color:var(--yellow); color:var(--yellow); background:rgba(244,208,63,0.06); }
+  .move-btn:disabled { opacity:0.2; cursor:default; }
+  .move-btn:disabled:hover { border-color:var(--rule); color:var(--ink-faint); background:transparent; }
+
+  /* Inline edit inputs */
+  .task-edit-text { display:none; flex:1; background:var(--bg); border:1px solid var(--rule); color:var(--ink); font-family:'Space Grotesk',sans-serif; font-size:15px; padding:4px 8px; outline:none; transition:border-color 0.15s; min-width:0; }
+  .task-edit-tag  { display:none; width:80px; flex-shrink:0; background:var(--bg); border:1px solid var(--rule); color:var(--ink); font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.08em; padding:4px 8px; outline:none; transition:border-color 0.15s; }
+  .task-edit-text:focus, .task-edit-tag:focus { border-color:var(--yellow); }
+  .sheet.editing .task-text { display:none; }
+  .sheet.editing .task-tag  { display:none; }
+  .sheet.editing .task-edit-text { display:block; }
+  .sheet.editing .task-edit-tag  { display:block; }
+
+
+
+
+  /* Toolbox subgroups */
+  .tb-group { margin:0; padding:0; }
+  .tb-group-header {
+    display:flex; align-items:center; gap:10px;
+    padding:12px 0 8px; border-top:1px solid var(--rule);
+    margin-top:4px;
+  }
+  .tb-group-header:first-child { border-top:none; margin-top:0; }
+  .tb-group-name {
+    font-family:'JetBrains Mono',monospace; font-size:10px;
+    font-weight:700; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--ink-dim);
+  }
+  .tb-group-name-input {
+    font-family:'JetBrains Mono',monospace; font-size:10px;
+    font-weight:700; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--ink); background:var(--bg); border:1px solid var(--rule);
+    padding:3px 8px; outline:none; display:none;
+    transition:border-color 0.15s;
+  }
+  .tb-group-name-input:focus { border-color:var(--yellow); }
+  .sheet.editing .tb-group-name       { display:none; }
+  .sheet.editing .tb-group-name-input { display:block; }
+  .tb-group-count {
+    font-family:'JetBrains Mono',monospace; font-size:9px;
+    color:var(--ink-faint); letter-spacing:0.1em; margin-left:auto;
+  }
+  .tb-group-del {
+    display:none; background:transparent; border:1px solid var(--rule);
+    color:var(--ink-faint); font-size:11px; width:22px; height:22px;
+    cursor:pointer; align-items:center; justify-content:center;
+    transition:all 0.15s; flex-shrink:0;
+  }
+  .sheet.editing .tb-group-del { display:flex; }
+  .tb-group-del:hover { border-color:var(--red); color:var(--red); }
+
+  /* Add group row */
+  .tb-add-group-row {
+    display:none; align-items:center; gap:8px;
+    padding:14px 0 0; border-top:1px dashed rgba(244,208,63,0.2);
+    margin-top:8px;
+  }
+  .sheet.editing .tb-add-group-row { display:flex; }
+
+
+  /* ── Assembly instructions ── */
+  .asm-section { padding:24px 36px; border-bottom:1px dashed var(--rule); }
+  .asm-section:last-child { border-bottom:none; }
+
+  .asm-sec-head {
+    display:flex; align-items:center; gap:12px;
+    margin-bottom:16px; flex-wrap:wrap;
+  }
+  .asm-sec-num {
+    font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700;
+    background:var(--yellow); color:var(--bg); padding:4px 9px; letter-spacing:0.12em;
+    flex-shrink:0;
+  }
+  .asm-sec-name {
+    font-family:'Archivo Black',sans-serif; font-size:20px;
+    text-transform:uppercase; color:var(--ink); margin:0;
+  }
+  .asm-sec-name-input {
+    font-family:'Archivo Black',sans-serif; font-size:20px;
+    text-transform:uppercase; color:var(--ink);
+    background:var(--bg); border:1px solid var(--rule);
+    padding:3px 10px; outline:none; display:none;
+    transition:border-color 0.15s; flex:1;
+  }
+  .asm-sec-name-input:focus { border-color:var(--yellow); }
+  .sheet.editing .asm-sec-name       { display:none; }
+  .sheet.editing .asm-sec-name-input { display:block; }
+
+  .asm-sec-del {
+    display:none; background:transparent; border:1px solid var(--rule);
+    color:var(--ink-faint); font-size:11px; width:24px; height:24px;
+    cursor:pointer; align-items:center; justify-content:center;
+    transition:all 0.15s; flex-shrink:0; margin-left:auto;
+  }
+  .sheet.editing .asm-sec-del { display:flex; }
+  .asm-sec-del:hover { border-color:var(--red); color:var(--red); }
+
+  /* Steps */
+  ol.asm-steps { list-style:none; padding:0; margin:0; counter-reset:step; }
+
+  li.asm-step {
+    display:flex; align-items:flex-start; gap:12px;
+    padding:11px 4px; border-top:1px solid var(--rule);
+    position:relative;
+  }
+  li.asm-step:first-child { border-top:none; }
+
+  .asm-step-num {
+    font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700;
+    color:var(--yellow); min-width:24px; padding-top:3px;
+    flex-shrink:0; letter-spacing:0.05em;
+  }
+
+  .asm-step-text {
+    flex:1; font-size:15px; line-height:1.5; color:var(--ink);
+    padding-top:2px; min-width:0;
+  }
+
+  .asm-step-input {
+    width:100%; display:none; font-size:15px; line-height:1.5; color:var(--ink);
+    background:var(--bg); border:1px solid var(--rule);
+    padding:4px 8px; outline:none;
+    font-family:'Space Grotesk',sans-serif;
+    transition:border-color 0.15s;
+    resize:none; overflow:hidden; min-height:28px; box-sizing:border-box;
+  }
+  .asm-step-input:focus { border-color:var(--yellow); }
+  .sheet.editing .asm-step-text  { display:none; }
+  .sheet.editing .asm-step-input { display:block; }
+
+  /* Move + delete buttons for steps */
+  .asm-step-actions {
+    display:none; flex-direction:column; gap:1px; flex-shrink:0;
+  }
+  .sheet.editing .asm-step-actions { display:flex; }
+  .asm-move-btn {
+    background:transparent; border:1px solid var(--rule);
+    color:var(--ink-faint); font-size:9px;
+    width:22px; height:18px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    transition:all 0.12s; padding:0;
+  }
+  .asm-move-btn:hover { border-color:var(--yellow); color:var(--yellow); background:rgba(244,208,63,0.06); }
+  .asm-move-btn:disabled { opacity:0.2; cursor:default; }
+  .asm-move-btn:disabled:hover { border-color:var(--rule); color:var(--ink-faint); background:transparent; }
+  .asm-del-btn {
+    display:none; /* only show in edit mode */
+    background:transparent; border:1px solid var(--rule);
+    color:var(--ink-faint); font-size:10px;
+    width:22px; height:22px; cursor:pointer;
+    align-items:center; justify-content:center;
+    transition:all 0.12s; margin-top:2px; flex-shrink:0;
+  }
+  .sheet.editing .asm-del-btn { display:flex; }
+  .asm-del-btn:hover { border-color:var(--red); color:var(--red); }
+
+  /* Add section row */
+  .asm-add-section-row {
+    display:none; align-items:center; gap:8px;
+    padding:20px 36px; border-top:1px dashed rgba(244,208,63,0.2);
+  }
+  .sheet.editing .asm-add-section-row { display:flex; }
+
+  /* Step checkbox — always visible */
+  .asm-step-check {
+    flex-shrink:0; width:20px; height:20px;
+    border:1.5px solid var(--ink-dim); background:var(--bg);
+    position:relative; cursor:pointer; transition:all 0.2s ease;
+    margin-top:3px;
+  }
+  .asm-step-check::after {
+    content:"✓"; position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--bg); font-size:13px; font-weight:700;
+    transform:scale(0); transition:transform 0.2s cubic-bezier(.5,1.6,.4,1);
+  }
+  li.asm-step.checked .asm-step-check { background:var(--green); border-color:var(--green); }
+  li.asm-step.checked .asm-step-check::after { transform:scale(1); }
+  li.asm-step.checked .asm-step-text { color:var(--ink-faint); text-decoration:line-through; text-decoration-color:var(--green); opacity:0.6; }
+
+  /* Warning block */
+  .asm-step-warning {
+    margin-top:6px; padding:6px 10px;
+    background:rgba(244,208,63,0.08); border-left:3px solid var(--yellow);
+    font-family:'JetBrains Mono',monospace; font-size:11px;
+    letter-spacing:0.05em; color:var(--yellow); line-height:1.5;
+  }
+  .asm-step-warning::before { content:"⚠ "; font-weight:700; }
+  .asm-warning-input {
+    display:none; width:100%; margin-top:6px;
+    background:rgba(244,208,63,0.04); border:1px dashed var(--yellow-dim);
+    color:var(--yellow); font-family:'JetBrains Mono',monospace;
+    font-size:11px; padding:6px 10px; outline:none; resize:none;
+    transition:border-color 0.15s; box-sizing:border-box;
+  }
+  .asm-warning-input::placeholder { color:var(--yellow-dim); opacity:0.6; }
+  .asm-warning-input:focus { border-color:var(--yellow); }
+  .sheet.editing .asm-step-warning { display:none; }
+  .sheet.editing .asm-warning-input { display:block; }
+
+  /* Step body wrapper */
+  .asm-step-body { flex:1; min-width:0; width:0; }
+
+  /* Print button */
+  .asm-print-btn {
+    font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700;
+    letter-spacing:0.15em; text-transform:uppercase;
+    background:transparent; border:1px solid var(--rule);
+    color:var(--ink-faint); padding:7px 14px; cursor:pointer;
+    transition:all 0.15s ease; margin-left:auto;
+  }
+  .asm-print-btn:hover { border-color:var(--yellow); color:var(--yellow); }
+
+  @media (max-width:700px) {
+    .asm-section { padding:18px 16px; }
+    .asm-add-section-row { padding:16px; }
+    .asm-sec-name { font-size:17px; }
+  }
+  @media print {
+    body { background:white !important; padding:0 !important; }
+    body::before { display:none !important; }
+    .sheet { box-shadow:none !important; border:none !important; max-width:100% !important; }
+    header, .crew-panel, .test-details, .tab-bar, .edit-banner,
+    .hint-bar, .progress-wrap, footer, .status-bar,
+    .page-task, #page-pack, #page-assembly .asm-add-section-row,
+    .asm-step-actions, .asm-del-btn, .asm-sec-del,
+    .asm-warning-input, .pack-add-row, .move-btns,
+    .remove-task-btn, .task-edit-text, .task-edit-tag { display:none !important; }
+    #page-assembly { display:block !important; }
+    .asm-section { padding:16px 0; border-bottom:1px solid #ccc; page-break-inside:avoid; }
+    .asm-sec-head { margin-bottom:12px; }
+    .asm-sec-num { background:#000 !important; color:#fff !important; -webkit-print-color-adjust:exact; }
+    .asm-sec-name { color:#000 !important; font-size:16px !important; }
+    .asm-step { padding:8px 0; border-top:1px solid #eee; }
+    .asm-step-num { color:#000 !important; font-weight:700; }
+    .asm-step-text { color:#000 !important; opacity:1 !important; text-decoration:none !important; font-size:13px; }
+    .asm-step-check {
+      width:14px !important; height:14px !important;
+      border:1.5px solid #000 !important; background:white !important;
+      -webkit-print-color-adjust:exact;
+    }
+    .asm-step-check::after { display:none !important; }
+    .asm-step-warning {
+      background:#fffbe6 !important; border-left:3px solid #c8970a !important;
+      color:#c8970a !important; font-size:10px !important;
+      -webkit-print-color-adjust:exact;
+    }
+    .print-header {
+      display:block !important; text-align:center;
+      padding-bottom:16px; margin-bottom:16px;
+      border-bottom:2px solid #000;
+    }
+    .print-header h1 { font-size:22px; margin:0 0 4px; }
+    .print-header p  { font-size:11px; color:#666; margin:0; }
+  }
+  .print-header { display:none; }
+
+  /* Add task row — only visible in edit mode */
+  .add-task-row { display:none; align-items:center; gap:8px; padding:12px 6px 4px; border-top:1px dashed rgba(244,208,63,0.2); margin-top:4px; }
+  .sheet.editing .add-task-row { display:flex; }
+  .add-task-input { flex:1; background:var(--bg); border:1px dashed var(--rule); color:var(--ink); padding:9px 12px; font-family:'Space Grotesk',sans-serif; font-size:14px; outline:none; transition:border-color 0.15s; }
+  .add-task-input::placeholder { color:var(--ink-faint); }
+  .add-task-input:focus { border-color:var(--yellow); }
+  .add-task-tag-input { width:90px; background:var(--bg); border:1px dashed var(--rule); color:var(--ink); padding:9px 10px; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.08em; outline:none; transition:border-color 0.15s; }
+  .add-task-tag-input::placeholder { color:var(--ink-faint); }
+  .add-task-tag-input:focus { border-color:var(--yellow); }
+  .add-task-btn { background:transparent; border:1px solid var(--rule); color:var(--ink-faint); font-family:'JetBrains Mono',monospace; font-size:20px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.15s; flex-shrink:0; }
+  .add-task-btn:hover { border-color:var(--yellow); color:var(--yellow); }
+
+  /* ── Footer ── */
+  footer { padding:20px 36px; border-top:1px solid var(--rule); background:var(--surface-2); display:flex; justify-content:space-between; align-items:center; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.15em; text-transform:uppercase; color:var(--ink-faint); flex-wrap:wrap; gap:14px; }
+  .footer-actions { display:flex; gap:10px; }
+  .btn { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.15em; text-transform:uppercase; background:transparent; border:1px solid var(--rule); color:var(--ink-dim); padding:9px 16px; cursor:pointer; transition:all 0.15s ease; }
+  .btn:hover { border-color:var(--yellow); color:var(--yellow); }
+  .switch-user { font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-faint); background:none; border:none; cursor:pointer; padding:0; transition:color 0.15s ease; }
+  .switch-user:hover { color:var(--yellow); }
+
+  /* ── Modal ── */
+  .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(4px); z-index:100; display:flex; align-items:center; justify-content:center; padding:24px; opacity:1; transition:opacity 0.25s ease; }
+  .modal-backdrop.hidden { opacity:0; pointer-events:none; }
+  .modal { background:var(--surface); border:1px solid var(--yellow); max-width:440px; width:100%; padding:36px; box-shadow:0 0 60px rgba(244,208,63,0.12); }
+  .modal-glider { height:32px; width:auto; display:block; margin-bottom:20px; opacity:0.9; filter:drop-shadow(0 0 8px rgba(244,208,63,0.2)); }
+  .modal-title { font-family:'Archivo Black',sans-serif; font-size:22px; text-transform:uppercase; letter-spacing:-0.01em; color:var(--ink); margin:0 0 4px; }
+  .modal-sub { font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.15em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:28px; }
+  .name-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .name-btn { font-family:'Space Grotesk',sans-serif; font-size:15px; font-weight:600; background:var(--surface-2); border:1px solid var(--rule); color:var(--ink); padding:14px 16px; cursor:pointer; text-align:left; letter-spacing:0.02em; transition:all 0.15s ease; position:relative; }
+  .name-btn::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--yellow); transform:scaleY(0); transition:transform 0.15s ease; }
+  .name-btn:hover { border-color:var(--yellow); background:rgba(244,208,63,0.06); color:var(--yellow); padding-left:20px; }
+  .name-btn:hover::before { transform:scaleY(1); }
+  .name-btn.selected { border-color:var(--yellow); color:var(--yellow); background:rgba(244,208,63,0.06); }
+  .name-btn.selected::before { transform:scaleY(1); }
+
+  /* ── Mobile ── */
+  @media (max-width:700px) {
+    body { padding: 12px 8px 60px; }
+
+    header,main,footer,.progress-wrap,.status-bar,.crew-panel,.hint-bar { padding-left:16px; padding-right:16px; }
+
+    /* Header */
+    header { padding:20px 16px 16px; }
+    .corner-mark { display:none; }
+    .stamp { top:16px; right:12px; font-size:9px; padding:5px 10px; }
+
+    /* Test details */
+    .test-details { padding:16px; }
+    .test-details-row { gap:16px; }
+    .test-objective-text, .test-objective-input { font-size:14px; }
+
+    /* Crew panel — smaller chips */
+    .crew-panel { padding:10px 16px; gap:6px; }
+    .crew-chip { font-size:9px; padding:4px 8px; }
+    .crew-label { font-size:8px; }
+
+    /* Hint bar — slightly bigger, easier to read */
+    .hint-bar { font-size:10px; gap:12px; padding:10px 16px; flex-wrap:wrap; }
+    .hint-key { font-size:9px; padding:2px 6px; }
+
+    /* Progress — don't let label squeeze the bar */
+    .progress-wrap { gap:10px; padding:14px 16px; }
+    .progress-label { min-width:80px; font-size:11px; }
+    .progress-label .pct { margin-left:4px; }
+
+    /* Tasks — give text maximum horizontal space */
+    li.task { flex-wrap:nowrap; padding:14px 4px; gap:10px; align-items:center; }
+    .task-text { font-size:15px; flex:1; min-width:0; }
+    /* Hide tag on mobile — saves significant space */
+    .task-tag { display:none; }
+    /* Meta shrinks to just the worker chips / by label */
+    .task-meta {
+      padding-left:8px; border-left:1px solid var(--rule);
+      align-items:flex-end; flex-direction:column;
+      flex-shrink:0; min-width:0; gap:3px;
+      width:auto;
+    }
+    .worker-chips { justify-content:flex-end; }
+    .remove-task-btn { flex-shrink:0; }
+
+    /* Add task row */
+    .add-task-row { flex-wrap:wrap; gap:6px; }
+    .add-task-tag-input { width:80px; }
+
+    /* Footer */
+    footer { padding:14px 16px; gap:10px; }
+
+    /* Modal — tighter on small screens */
+    .modal { padding:24px; }
+    .modal-title { font-size:18px; }
+    .name-grid { gap:8px; }
+    .name-btn { padding:12px 14px; font-size:14px; }
+  }
+
+  /* Extra small phones */
+  @media (max-width:380px) {
+    h1 { font-size:32px; }
+    .name-grid { grid-template-columns:1fr; }
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+<!-- Name picker modal -->
+<div class="modal-backdrop hidden" id="modalBackdrop">
+  <div class="modal">
+    <img src="maris_glider.png" alt="" class="modal-glider" />
+    <div class="modal-title">Who are you?</div>
+    <div class="modal-sub">Select your name to continue</div>
+    <div class="name-grid" id="nameGrid"></div>
+  </div>
+</div>
+
+<div class="sheet" id="sheet">
+
+  <!-- 1. Header -->
+  <header>
+    <img src="maris_glider.png" alt="" class="corner-mark" />
+    <div class="doc-id">DOC <span>// MARIS-TS</span> · REV 03</div>
+    <h1>project <span class="accent">maris</span></h1>
+    <div class="tagline">Operations · Task Sheet · Live</div>
+    <div class="stamp" id="stamp">in progress</div>
+  </header>
+
+  <!-- 2. Crew panel -->
+  <div class="crew-panel" id="crewPanel">
+    <span class="crew-label">Crew</span>
+  </div>
+
+  <!-- 3. Test details -->
+  <div class="test-details">
+    <div class="test-details-row">
+      <div class="test-detail-item">
+        <span class="test-detail-label">Date</span>
+        <input class="inline-field" id="fieldDate" type="text" value="05·MAY·2026" spellcheck="false" />
+      </div>
+      <div class="test-detail-item">
+        <span class="test-detail-label">Session</span>
+        <input class="inline-field label-field" id="fieldLabel" type="text" value="Test Day Plan" spellcheck="false" />
+      </div>
+      <div class="test-detail-item">
+        <span class="test-detail-label">Operator</span>
+        <span class="test-detail-val" id="metaOperator">—</span>
+      </div>
+    </div>
+    <div class="test-objective-wrap">
+      <span class="test-detail-label">Test Objective</span>
+      <div class="test-objective-text" id="objectiveDisplay"></div>
+      <textarea class="test-objective-input" id="fieldObjective" placeholder="Describe the goals for today's test session…" spellcheck="true"></textarea>
+    </div>
+  </div>
+
+  <!-- 4. Sticky tab bar + edit -->
+  <div class="tab-bar" id="tabBar">
+    <button class="tab-btn active" id="tabTask">☰ Task Sheet</button>
+    <button class="tab-btn" id="tabPack">✦ Packing List</button>
+    <button class="tab-btn" id="tabAssembly">⚙ Assembly</button>
+    <button class="edit-mode-btn" id="editModeBtn">Edit</button>
+  </div>
+
+  <!-- Edit mode banner -->
+  <div class="edit-banner">
+    <span class="edit-banner-dot"></span>
+    Edit mode active — reorder, add, remove tasks and edit content. Click <strong style="color:var(--yellow)">Done Editing</strong> when finished.
+  </div>
+
+  <!-- 5. Pages -->
+  <div class="page active" id="page-task">
+    <!-- Status bar (less prominent, inside page) -->
+    <div class="status-bar">
+      <div class="left">
+        <span class="dot" id="connDot"></span>
+        <span id="connLabel">Initializing</span>
+      </div>
+      <div class="right"><span id="lastSync">— —</span></div>
+    </div>
+
+    <div class="hint-bar">
+      <span><span class="hint-key">TAP</span> claim / unclaim</span>
+      <span><span class="hint-key">SWIPE RIGHT</span> mark done</span>
+      <span><span class="hint-key">SWIPE LEFT</span> undo / unclaim</span>
+      <span><span class="hint-key">HOLD</span> or <span class="hint-key">RIGHT CLICK</span> mark done</span>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-label"><span id="progressCount">0 / 0</span><span class="pct" id="progressPct">0%</span></div>
+      <div class="progress-track">
+        <div class="progress-fill-active" id="progressFillActive"></div>
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+
+    <main id="main"></main>
+  </div><!-- end page-task -->
+
+  <!-- Assembly page -->
+  <div class="page" id="page-assembly">
+    <!-- Print-only header -->
+    <div class="print-header">
+      <h1>PROJECT MARIS — Assembly Instructions</h1>
+      <p id="printMeta"></p>
+    </div>
+    <div id="assemblyContent"></div>
+  </div>
+
+  <!-- Packing page -->
+  <div class="page" id="page-pack">
+    <div id="packContent"></div>
+  </div>
+
+  <footer>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="color:var(--ink-faint)">Operator</span>
+      <span style="color:var(--ink)" id="footerName">—</span>
+      <button class="switch-user" id="switchUserBtn">[ switch ]</button>
+    </div>
+    <div class="footer-actions">
+      <button class="theme-btn" id="themeBtn"><span class="theme-icon">☀</span><span id="themeBtnLabel">Light</span></button>
+      <button class="btn" id="refreshBtn">Refresh</button>
+      <button class="btn" id="resetBtn">Reset all</button>
+    </div>
+  </footer>
+</div>
+
+<script>
+  const SUPABASE_URL = "https://vaujzlmoedyzksdjxujg.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_ab39PpRFYChIXsrYLgurVw_5ijWTWLH";
+  const SHEET_VERSION  = "2025-05-05-v2";
+
+
+  const DEFAULT_ASSEMBLY_SECTIONS = [
+    { id:"as1", name:"VBD",         steps:[] },
+    { id:"as2", name:"P&R",         steps:[] },
+    { id:"as3", name:"Full Glider", steps:[] },
+  ];
+
+  const DEFAULT_TOOLBOX_GROUPS = [
+    { id:"tg1", name:"Skeleton",     items:[] },
+    { id:"tg2", name:"Skins & Tail", items:[] },
+    { id:"tg3", name:"VBD / P&R",   items:[] },
+    { id:"tg4", name:"Electrical",   items:[] },
+    { id:"tg5", name:"General",      items:[] },
+  ];
+  const TEAM = ["Alvaro","Bartol","Hussain","Ibrahim","James","Jasper","Kevin","Poojak"];
+
+  // Fixed sections — skeleton tasks are stored dynamically in Supabase
+  const FIXED_SECTIONS = [
+    { id:"01", title:"VBD", time:"flexible", tasks:[
+      {id:"t1", text:"Torque the penetrators on the end cap",                         tag:"seal"},
+      {id:"t2", text:"Check cap between piston housing and bottom plate",             tag:"inspect"},
+      {id:"t3", text:"Check grub screw is flush",                                     tag:"inspect"},
+      {id:"t4", text:"Check the CAN command [dry test]",                              tag:"electrical"},
+      {id:"t5", text:"Seal with end cap",                                             tag:"seal"},
+    ]},
+    { id:"02", title:"P&R", time:"flexible", tasks:[
+      {id:"t6",  text:"Torque the penetrators",                                       tag:"seal"},
+      {id:"t7",  text:"Assemble the pitch assembly with rails",                       tag:"mechanical"},
+      {id:"t8",  text:"Assemble the roll assembly, make sure the grub screws are tight", tag:"mechanical"},
+      {id:"t9",  text:"Check the direction of roll and pitch on teensy",              tag:"electrical"},
+      {id:"t10", text:"Check the CAN command [dry test]",                             tag:"electrical"},
+      {id:"t11", text:"Seal with end cap",                                            tag:"seal"},
+    ]},
+    { id:"03", title:"Skeleton", time:"flexible", tasks:[], dynamic:true },
+    { id:"04", title:"Operations", time:"flexible", tasks:[], dynamic:true },
+  ];
+
+  // ── State ──────────────────────────────────────────
+  let taskStates    = {};   // { taskId: { done, by, at, workers[] } }
+  let dynamicTasksMap = {}; // { sectionId: [{id,text,tag}] } — one list per dynamic section
+  let toolboxGroups = []; // [{id, name, items:[{id,text}]}]
+  let toolboxStates = {};  // { itemId: { checked, by } }
+  let carryItems    = {};  // { memberName: [{id, text, there, back}] }
+  let testObjective    = "";
+  let assemblySections = [];
+  let currentTab    = "task";
+  let editMode      = false;
+  let editingBy     = null;  // who currently has edit mode open (from Supabase)
+  let operator      = localStorage.getItem("maris_operator") || "";
+  const $           = id => document.getElementById(id);
+
+  function getSections() {
+    return FIXED_SECTIONS.map(s => s.dynamic ? { ...s, tasks: dynamicTasksMap[s.id] || [] } : s);
+  }
+
+  function buildTaskSecMap() {
+    const map = {};
+    getSections().forEach(sec => sec.tasks.forEach(t => { map[t.id] = sec.id; }));
+    return map;
+  }
+
+  // ── Connection ─────────────────────────────────────
+  function setConn(status, label) {
+    $("connDot").className = "dot " + (status||"");
+    $("connLabel").textContent = label;
+  }
+  function fmtTime(ts) {
+    return ts ? new Date(ts).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}) : "— —";
+  }
+
+  // ── Crew panel ─────────────────────────────────────
+  function renderCrew() {
+    const panel = $("crewPanel");
+    panel.innerHTML = `<span class="crew-label">Crew</span>`;
+    const map = buildTaskSecMap();
+    TEAM.forEach(name => {
+      const active = Object.entries(taskStates)
+        .filter(([,e]) => !e.done && e.workers && e.workers.includes(name))
+        .map(([tid]) => map[tid]).filter(Boolean);
+      const chip = document.createElement("div");
+      chip.className = "crew-chip" + (name===operator?" me":active.length?" busy":" available");
+      chip.innerHTML = '<span class="crew-status-dot"></span>' + name;
+      panel.appendChild(chip);
+    });
+  }
+
+  // ── Edit mode ──────────────────────────────────────
+  function setEditMode(on) {
+    // If someone else is editing, block entering edit mode
+    if (on && editingBy && editingBy !== operator) {
+      alert(editingBy + " is currently editing. Please wait until they finish.");
+      return;
+    }
+
+    editMode = on;
+    const sheet = $("sheet");
+    const btn   = $("editModeBtn");
+    if (on) {
+      sheet.classList.add("editing");
+      btn.classList.add("active");
+      btn.textContent = "Done Editing";
+      $("fieldDate").removeAttribute("readonly");
+      $("fieldLabel").removeAttribute("readonly");
+      // Broadcast that we are now editing
+      scheduleSave();
+    } else {
+      sheet.classList.remove("editing");
+      btn.classList.remove("active");
+      btn.textContent = "Edit";
+      $("fieldDate").setAttribute("readonly","");
+      $("fieldLabel").setAttribute("readonly","");
+      // Save changes, then pull latest so we get any changes made while we were editing
+      save().then(() => load());
+    }
+    render();
+    updateEditLockUI();
+  }
+
+  // Update the Edit button to show lock state
+  function updateEditLockUI() {
+    const btn = $("editModeBtn");
+    if (!btn) return;
+    if (editMode) {
+      // We are editing — already handled by setEditMode
+      return;
+    }
+    if (editingBy && editingBy !== operator) {
+      btn.textContent = editingBy + " editing…";
+      btn.style.color = "var(--red)";
+      btn.style.borderColor = "var(--red)";
+      btn.title = editingBy + " is in edit mode. Wait for them to finish.";
+    } else {
+      btn.textContent = "Edit";
+      btn.style.color = "";
+      btn.style.borderColor = "";
+      btn.title = "";
+    }
+  }
+
+  $("editModeBtn").addEventListener("click", () => setEditMode(!editMode));
+
+  // Save date/label whenever they change (debounced via save)
+  ["fieldDate","fieldLabel"].forEach(id => {
+    $(id).addEventListener("input", () => { if (editMode) scheduleSave(); });
+    $(id).addEventListener("keydown", e => { if (e.key === "Enter") { e.target.blur(); } });
+  });
+  // Objective textarea — save on change, update display on blur
+  const objInput = $("fieldObjective");
+  const objDisplay = $("objectiveDisplay");
+  if (objInput) {
+    objInput.addEventListener("input", () => {
+      testObjective = objInput.value;
+      scheduleSave();
+    });
+    objInput.addEventListener("blur", () => {
+      if (objDisplay) objDisplay.textContent = objInput.value;
+    });
+  }
+
+  // ── Surgical helpers — avoid full re-render on every tap ──────────
+
+  // Update just the progress bar and stamp
+  function renderProgress() {
+    let total=0, done=0, active=0;
+    getSections().forEach(sec => sec.tasks.forEach(task => {
+      total++;
+      const e = taskStates[task.id] || {};
+      const w = Array.isArray(e.workers) ? e.workers : [];
+      if (e.done) done++;
+      else if (w.length > 0) active++;
+    }));
+    const pct  = total ? (done/total)*100 : 0;
+    const pctC = total ? ((done+active)/total)*100 : 0;
+    $("progressFillActive").style.width = pctC+"%";
+    $("progressFill").style.width       = pct+"%";
+    $("progressCount").textContent = done+" / "+total;
+    $("progressPct").textContent   = Math.round(pct)+"%";
+    const st = $("stamp");
+    if (done===total && total>0) { st.textContent="complete"; st.classList.add("complete"); }
+    else                          { st.textContent="in progress"; st.classList.remove("complete"); }
+  }
+
+  // Update a single task <li> in-place — no DOM thrash, no flicker
+  function updateTaskInDOM(tid) {
+    const li = document.querySelector('li.task[data-id="'+tid+'"]');
+    if (!li) { render(); return; } // not found — fall back to full render
+
+    const e       = taskStates[tid] || {};
+    const workers = Array.isArray(e.workers) ? e.workers : [];
+    const isDone   = !!e.done;
+    const isActive = !isDone && workers.length > 0;
+    const isMine   = isActive && workers.includes(operator);
+
+    li.className = "task" + (isDone?" done":isActive?" active":"") + (isMine?" mine":"");
+
+    const meta = li.querySelector(".task-meta");
+    meta.querySelectorAll(".task-by, .worker-chips").forEach(el => el.remove());
+
+    if (isDone && e.by) {
+      const by = document.createElement("span");
+      by.className = "task-by";
+      by.textContent = "✓ " + e.by;
+      meta.appendChild(by);
+    } else if (isActive) {
+      const chips = document.createElement("div");
+      chips.className = "worker-chips";
+      workers.forEach(w => {
+        const chip = document.createElement("span");
+        chip.className = "worker-chip" + (w === operator ? " is-me" : "");
+        chip.textContent = w;
+        chips.appendChild(chip);
+      });
+      meta.appendChild(chips);
+    }
+
+    renderProgress();
+    renderCrew();
+  }
+
+  // Track when we last made a local change
+  let localUpdatedTs = 0;
+  let lastSaveTs     = 0;
+  function markLocalChange() { localUpdatedTs = Date.now(); }
+
+  // Apply an incoming remote record
+  function applyRemoteUpdate(rec) {
+    // Never clobber local state while user is editing
+    if (editMode) {
+      // Still update the editingBy field so we know if someone else is also editing
+      editingBy        = rec.editingBy || null;
+    assemblySections = (rec.assemblySections && rec.assemblySections.length) ? rec.assemblySections : JSON.parse(JSON.stringify(DEFAULT_ASSEMBLY_SECTIONS));
+    assemblyStates   = rec.assemblyStates || {};
+      updateEditLockUI();
+      return;
+    }
+    // Ignore our own echo
+    if (Date.now() - lastSaveTs < 4000) return;
+
+    applyRecord(rec);
+    cacheLocally(rec);
+    setConn("live", "Live · synced");
+    $("lastSync").textContent = "synced " + fmtTime(Date.now());
+    render();
+  }
+
+  // ── Render ─────────────────────────────────────────
+  function render() {
+    $("main").innerHTML = "";
+    let total=0, done=0, active=0;
+    const sections = getSections();
+
+    sections.forEach(sec => {
+      const s = document.createElement("section");
+      s.dataset.sec = sec.id;
+      s.innerHTML = `
+        <div class="sec-head">
+          <span class="sec-num">${sec.id}</span>
+          <h2 class="sec-title">${sec.title}</h2>
+          <span class="sec-time">${sec.time}</span>
+        </div>
+        <ul class="tasks"></ul>`;
+      const ul = s.querySelector("ul");
+
+      if (sec.tasks.length === 0) {
+        const empty = document.createElement("li");
+        empty.style.cssText = "padding:12px 6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-faint);letter-spacing:0.1em;border-top:none;cursor:default;";
+        empty.textContent = editMode ? "No tasks yet — add one below." : "No tasks yet.";
+        ul.appendChild(empty);
+      }
+
+      sec.tasks.forEach(task => {
+        total++;
+        const e = taskStates[task.id] || {};
+        const workers = Array.isArray(e.workers) ? e.workers : [];
+        const isDone   = !!e.done;
+        const isActive = !isDone && workers.length > 0;
+        if (isDone) done++; else if (isActive) active++;
+
+        const li = document.createElement("li");
+        const isMine = isActive && workers.includes(operator);
+        li.className = "task" + (isDone?" done":isActive?" active":"") + (isMine?" mine":"");
+        li.dataset.id = task.id;
+
+        let workerHtml = "";
+        if (isDone && e.by) workerHtml = `<span class="task-by">✓ ${e.by}</span>`;
+        else if (isActive)  workerHtml = `<div class="worker-chips">${workers.map(w=>`<span class="worker-chip${w===operator?" is-me":""}">${w}</span>`).join("")}</div>`;
+
+        li.innerHTML = `
+          <div class="swipe-bg-right" data-swipe-bg="right">✓ done</div>
+          <div class="swipe-bg-left"  data-swipe-bg="left">✕ undo</div>
+          <div class="task-inner">
+            <div class="move-btns">
+              <button class="move-btn move-up" title="Move up">▲</button>
+              <button class="move-btn move-dn" title="Move down">▼</button>
+            </div>
+            <div class="check-box"></div>
+            <div class="task-text">${task.text}</div>
+            <input class="task-edit-text" type="text" value="${task.text.replace(/"/g,'&quot;')}" data-tid="${task.id}" />
+            <div class="task-meta">
+              <span class="task-tag">${task.tag}</span>
+              <input class="task-edit-tag" type="text" value="${task.tag.replace(/"/g,'&quot;')}" data-tid="${task.id}" />
+              ${workerHtml}
+            </div>
+            <button class="remove-task-btn" data-id="${task.id}" title="Remove task">✕</button>
+          </div>`;
+
+        // Remove button
+        li.querySelector(".remove-task-btn").addEventListener("click", async ev => {
+          ev.stopPropagation();
+          if (sec.dynamic) {
+            const existing = dynamicTasksMap[sec.id] || [];
+            dynamicTasksMap = { ...dynamicTasksMap, [sec.id]: existing.filter(t => t.id !== task.id) };
+          } else {
+            if (!window._removedFixed) window._removedFixed = {};
+            window._removedFixed[task.id] = true;
+          }
+          delete taskStates[task.id];
+          applyFixedOverrides(); render(); markLocalChange(); scheduleSave();
+        });
+
+        // Inline edit — text and tag inputs (only active in edit mode)
+        const editText = li.querySelector(".task-edit-text");
+        const editTag  = li.querySelector(".task-edit-tag");
+
+        const saveTaskEdit = () => {
+          const newText = editText.value.trim();
+          const newTag  = editTag.value.trim() || "misc";
+          if (!newText) return;
+          if (newText === task.text && newTag === task.tag) return;
+          if (sec.dynamic) {
+            const existing = dynamicTasksMap[sec.id] || [];
+            dynamicTasksMap = { ...dynamicTasksMap, [sec.id]: existing.map(t => t.id === task.id ? { ...t, text:newText, tag:newTag } : t) };
+          } else {
+            // Update in extraFixed if it's there, otherwise add as edit override
+            const extras = window._extraFixed || [];
+            const ei = extras.findIndex(x => x.task.id === task.id);
+            if (ei !== -1) {
+              window._extraFixed[ei].task = { ...window._extraFixed[ei].task, text:newText, tag:newTag };
+            } else {
+              // It's a base fixed task — store edit in _editedFixed
+              if (!window._editedFixed) window._editedFixed = {};
+              window._editedFixed[task.id] = { text:newText, tag:newTag };
+            }
+          }
+          scheduleSave();
+          // Update the display text/tag spans without full re-render
+          li.querySelector(".task-text").textContent = newText;
+          li.querySelector(".task-tag").textContent  = newTag;
+        };
+
+        editText.addEventListener("blur",   saveTaskEdit);
+        editTag.addEventListener("blur",    saveTaskEdit);
+        editText.addEventListener("keydown", e => { if (e.key === "Enter") editText.blur(); });
+        editTag.addEventListener("keydown",  e => { if (e.key === "Enter") editTag.blur(); });
+        // Prevent clicks on inputs from toggling tasks
+        editText.addEventListener("click", e => e.stopPropagation());
+        editTag.addEventListener("click",  e => e.stopPropagation());
+
+        // ── Move up / down buttons ────────────────────────
+        const moveUp = li.querySelector(".move-up");
+        const moveDn = li.querySelector(".move-dn");
+
+        // Get current task index in the data array
+        function getTaskList() {
+          return sec.dynamic
+            ? [...(dynamicTasksMap[sec.id] || [])]
+            : [...sec.tasks];
+        }
+        function setTaskList(newList) {
+          if (sec.dynamic) {
+            dynamicTasksMap = { ...dynamicTasksMap, [sec.id]: newList };
+          } else {
+            if (!window._sectionOrder) window._sectionOrder = {};
+            window._sectionOrder[sec.id] = newList.map(t => t.id);
+          }
+        }
+
+        function moveTask(dir) {
+          const list = getTaskList();
+          const idx  = list.findIndex(t => t.id === task.id);
+          const newIdx = idx + dir;
+          if (newIdx < 0 || newIdx >= list.length) return;
+          // Swap
+          [list[idx], list[newIdx]] = [list[newIdx], list[idx]];
+          setTaskList(list);
+          applyFixedOverrides(); // update FIXED_SECTIONS.tasks from _sectionOrder before render
+          markLocalChange(); render(); scheduleSave();
+        }
+
+        moveUp.addEventListener("click", e => { e.stopPropagation(); moveTask(-1); });
+        moveDn.addEventListener("click", e => { e.stopPropagation(); moveTask(+1); });
+
+        // Disable top/bottom buttons based on position
+        const taskList  = getTaskList();
+        const taskIdx   = taskList.findIndex(t => t.id === task.id);
+        moveUp.disabled = taskIdx === 0;
+        moveDn.disabled = taskIdx === taskList.length - 1;
+
+        // Task interactions — disabled in edit mode
+        if (!editMode) {
+          const inner   = li.querySelector(".task-inner");
+          const bgRight = li.querySelector("[data-swipe-bg='right']");
+          const bgLeft  = li.querySelector("[data-swipe-bg='left']");
+
+          const SWIPE_THRESHOLD = 72; // px needed to trigger action
+          let startX = 0, startY = 0;
+          let deltaX = 0;
+          let isSwiping = false;
+          let swipeAxis = null; // "x" | "y" | null
+
+          function onStart(clientX, clientY) {
+            startX = clientX; startY = clientY;
+            deltaX = 0; isSwiping = true; swipeAxis = null;
+            inner.style.transition = "none";
+          }
+
+          function onMove(clientX, clientY) {
+            if (!isSwiping) return;
+            const dx = clientX - startX;
+            const dy = clientY - startY;
+
+            // Determine axis on first significant movement
+            if (!swipeAxis && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
+              swipeAxis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+            }
+            if (swipeAxis !== "x") return; // let vertical scroll through
+
+            deltaX = dx;
+            inner.style.transform = `translateX(${deltaX}px)`;
+
+            // Show background hints
+            const pct = Math.min(Math.abs(deltaX) / SWIPE_THRESHOLD, 1);
+            if (deltaX > 0) {
+              bgRight.style.opacity = pct;
+              bgLeft.style.opacity  = 0;
+            } else {
+              bgLeft.style.opacity  = pct;
+              bgRight.style.opacity = 0;
+            }
+          }
+
+          function onEnd() {
+            if (!isSwiping) return;
+            isSwiping = false;
+
+            // Snap back
+            inner.style.transition = "transform 0.2s ease";
+            inner.style.transform  = "translateX(0)";
+            bgRight.style.opacity  = 0;
+            bgLeft.style.opacity   = 0;
+
+            if (swipeAxis !== "x") return;
+
+            if (deltaX >= SWIPE_THRESHOLD) {
+              // Swipe right → mark done (or undo if already done)
+              if (!ensureOp()) return;
+              toggleDone(task.id);
+            } else if (deltaX <= -SWIPE_THRESHOLD) {
+              // Swipe left → unclaim / undo done
+              // Read fresh state — not the stale isDone closure from render time
+              if (!ensureOp()) return;
+              const freshState = taskStates[task.id] || {};
+              if (freshState.done) {
+                toggleDone(task.id); // undo done
+              } else {
+                const w = (freshState.workers || []).filter(n => n !== operator);
+                taskStates[task.id] = { ...freshState, workers: w };
+                updateTaskInDOM(task.id); scheduleSave();
+              }
+            }
+          }
+
+          // Touch events (mobile) — swipe to act, long-press as backup
+          let pressTimer = null;
+
+          li.addEventListener("touchstart", e => {
+            onStart(e.touches[0].clientX, e.touches[0].clientY);
+            // Start long-press timer as backup
+            pressTimer = setTimeout(() => {
+              // Only fire if not swiping
+              if (Math.abs(deltaX) < 10) {
+                onEnd(); // reset swipe state cleanly
+                if (ensureOp()) toggleDone(task.id);
+              }
+            }, 600);
+          }, { passive: true });
+
+          li.addEventListener("touchmove", e => {
+            clearTimeout(pressTimer); // moved = not a long press
+            onMove(e.touches[0].clientX, e.touches[0].clientY);
+            if (swipeAxis === "x") e.preventDefault();
+          }, { passive: false });
+
+          li.addEventListener("touchend",    () => { clearTimeout(pressTimer); onEnd(); });
+          li.addEventListener("touchcancel", () => { clearTimeout(pressTimer); onEnd(); });
+
+          // Mouse events (desktop) — keep click for desktop users
+          li.addEventListener("pointerdown", e => {
+            if (e.pointerType === "touch") return; // handled by touch events
+            if (e.button !== 0) return;
+            startX = e.clientX; startY = e.clientY;
+          });
+
+          // Right-click = mark done on desktop
+          li.addEventListener("contextmenu", e => {
+            e.preventDefault();
+            if (!ensureOp()) return;
+            toggleDone(task.id);
+          });
+
+          // Regular tap/click = claim / unclaim
+          li.addEventListener("click", e => {
+            // Ignore if it was actually a swipe
+            if (Math.abs(e.clientX - startX) > 8) return;
+            if (!ensureOp()) return;
+            if (isDone) return;
+            toggleWorker(task.id);
+          });
+        }
+
+        ul.appendChild(li);
+      });
+
+      // Add task row (always rendered, CSS shows/hides per edit mode)
+      const addRow = document.createElement("div");
+      addRow.className = "add-task-row";
+      addRow.innerHTML = `
+        <input class="add-task-input"     type="text" placeholder="New task description…" id="ati_${sec.id}" />
+        <input class="add-task-tag-input" type="text" placeholder="tag"                   id="att_${sec.id}" />
+        <button class="add-task-btn" id="atb_${sec.id}">+</button>`;
+      s.appendChild(addRow);
+
+      const doAdd = async () => {
+        if (!ensureOp()) return;
+        const ti = $(`ati_${sec.id}`), tt = $(`att_${sec.id}`);
+        const text = ti.value.trim(); if (!text) return;
+        const newTask = { id: (sec.dynamic?"dyn_":"fix_"+sec.id+"_") + Date.now(), text, tag: tt.value.trim()||"misc" };
+        if (sec.dynamic) {
+          const existing = dynamicTasksMap[sec.id] || [];
+          dynamicTasksMap = { ...dynamicTasksMap, [sec.id]: [...existing, newTask] };
+        } else {
+          // Store in _extraFixed — applyFixedOverrides() injects it on next render
+          // Do NOT push to sec.tasks directly as that mutates FIXED_SECTIONS
+          if (!window._extraFixed) window._extraFixed = [];
+          window._extraFixed.push({ secId: sec.id, task: newTask });
+        }
+        ti.value=""; tt.value="";
+        applyFixedOverrides(); render(); markLocalChange(); scheduleSave();
+        const refocus = $(`ati_${sec.id}`); if(refocus) refocus.focus();
+      };
+      addRow.querySelector(`#atb_${sec.id}`).addEventListener("click", doAdd);
+      addRow.querySelector(`#ati_${sec.id}`).addEventListener("keydown", e=>{ if(e.key==="Enter") doAdd(); });
+
+      $("main").appendChild(s);
+    });
+
+    // Progress
+    const pct = total ? (done/total)*100 : 0;
+    const pctC = total ? ((done+active)/total)*100 : 0;
+    $("progressFillActive").style.width = pctC+"%";
+    $("progressFill").style.width       = pct+"%";
+    $("progressCount").textContent = done+" / "+total;
+    $("progressPct").textContent   = Math.round(pct)+"%";
+
+    const st = $("stamp");
+    if (done===total && total>0) { st.textContent="complete"; st.classList.add("complete"); }
+    else                          { st.textContent="in progress"; st.classList.remove("complete"); }
+
+    $("metaOperator").textContent = operator||"—";
+    renderCrew();
+  }
+
+  function ensureOp() { if(!operator.trim()){showModal();return false;} return true; }
+
+  async function toggleWorker(tid) {
+    const e=taskStates[tid]||{};
+    const w=Array.isArray(e.workers)?[...e.workers]:[];
+    const i=w.indexOf(operator); if(i===-1) w.push(operator); else w.splice(i,1);
+    taskStates[tid]={...e,workers:w};
+    markLocalChange(); updateTaskInDOM(tid); scheduleSave();
+  }
+
+  async function toggleDone(tid) {
+    const e=taskStates[tid]||{};
+    taskStates[tid]=e.done?{done:false,workers:[]}:{done:true,by:operator,at:Date.now(),workers:[]};
+    markLocalChange(); updateTaskInDOM(tid); scheduleSave();
+  }
+
+  // ── Persistence ────────────────────────────────────
+  // ── Supabase client ─────────────────────────────────
+  let db = null;
+  try {
+    db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  } catch(e) {
+    console.error("Supabase failed to init:", e);
+    setConn("offline", "Supabase unavailable — offline mode");
+  }
+
+  // ── localStorage — offline fallback only ───────────
+  const LS_KEY = "maris_offline_v3";
+  function cacheLocally(rec) {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(rec)); } catch(e) {}
+  }
+  function readLocalCache() {
+    try { const r = localStorage.getItem(LS_KEY); return r ? JSON.parse(r) : null; }
+    catch(e) { return null; }
+  }
+
+  let isSaving          = false;
+  let saveQueued        = false;
+  let syncDebounce      = null;
+  let pendingRemoteUpdate = null; // queued realtime update that arrived mid-save
+
+  // ── Convert between app record and Supabase row ─────
+  function rowToRecord(row) {
+    return {
+      version:       SHEET_VERSION,
+      taskStates:    row.task_states    || {},
+      dynamicTasks:  row.dynamic_tasks  || {},
+      extraFixed:    row.extra_fixed    || [],
+      removedFixed:  row.removed_fixed  || {},
+      editedFixed:   row.edited_fixed   || {},
+      sectionOrder:  row.section_order  || {},
+      date:          row.sheet_date     || "05·MAY·2026",
+      label:         row.label          || "Test Day Plan",
+      objective:     row.objective       || "",
+      toolboxGroups: row.toolbox_groups || null,
+      toolboxStates: row.toolbox_states || {},
+      carryItems:    row.carry_items    || {},
+      editingBy:        row.editing_by          || null,
+      assemblySections: row.assembly_instructions || null,
+      assemblyStates:   row.assembly_states        || {},
+      updated:       row.updated_at     || 0
+    };
+  }
+
+  function buildRow() {
+    return {
+      task_states:    taskStates,
+      dynamic_tasks:  dynamicTasksMap,
+      extra_fixed:    window._extraFixed   || [],
+      removed_fixed:  window._removedFixed || {},
+      edited_fixed:   window._editedFixed  || {},
+      section_order:  window._sectionOrder || {},
+      sheet_date:     $("fieldDate").value,
+      label:          $("fieldLabel").value,
+      objective:      $("fieldObjective") ? $("fieldObjective").value : testObjective,
+      toolbox_groups: toolboxGroups,
+      toolbox_states: toolboxStates,
+      carry_items:    carryItems,
+      editing_by:            editMode ? operator : null,
+      assembly_instructions: assemblySections,
+      assembly_states:        assemblyStates,
+      updated_at:     Date.now()
+    };
+  }
+
+  // ── Apply a record into live state ──────────────────
+  function applyRecord(rec) {
+    if (!rec) return;
+    taskStates      = rec.version === SHEET_VERSION ? (rec.taskStates || {}) : {};
+    dynamicTasksMap = (rec.dynamicTasks && !Array.isArray(rec.dynamicTasks)) ? rec.dynamicTasks : {};
+    window._extraFixed   = rec.extraFixed   || [];
+    window._removedFixed = rec.removedFixed || {};
+    window._editedFixed  = rec.editedFixed  || {};
+    window._sectionOrder = rec.sectionOrder || {};
+    // Use saved groups or fall back to defaults
+    toolboxGroups  = (rec.toolboxGroups && rec.toolboxGroups.length) ? rec.toolboxGroups : JSON.parse(JSON.stringify(DEFAULT_TOOLBOX_GROUPS));
+    toolboxStates  = rec.toolboxStates || {};
+    carryItems     = rec.carryItems    || {};
+    testObjective  = rec.objective     || "";
+    editingBy        = rec.editingBy || null;
+    assemblySections = (rec.assemblySections && rec.assemblySections.length) ? rec.assemblySections : JSON.parse(JSON.stringify(DEFAULT_ASSEMBLY_SECTIONS));
+    assemblyStates   = rec.assemblyStates || {};
+    updateEditLockUI();
+    if ($("objectiveDisplay"))  $("objectiveDisplay").textContent  = testObjective;
+    // Only update the textarea if the user isn't currently typing in it
+    if ($("fieldObjective") && document.activeElement !== $("fieldObjective"))
+      $("fieldObjective").value = testObjective;
+    applyFixedOverrides();
+    if (!editMode) {
+      if (document.activeElement !== $("fieldDate"))
+        $("fieldDate").value  = rec.date  || "05·MAY·2026";
+      if (document.activeElement !== $("fieldLabel"))
+        $("fieldLabel").value = rec.label || "Test Day Plan";
+    }
+    if (currentTab === "pack")     renderPacking();
+    if (currentTab === "assembly") renderAssembly();
+  }
+
+  function applyFixedOverrides() {
+    const extras  = window._extraFixed   || [];
+    const removed = window._removedFixed || {};
+    const edited  = window._editedFixed  || {};
+    const orders  = window._sectionOrder || {};
+    FIXED_SECTIONS.forEach(sec => {
+      if (sec.dynamic) return;
+      // Start from original tasks
+      sec.tasks = sec.tasks.filter(t => !t.id.startsWith("fix_"));
+      // Inject added tasks
+      extras.filter(x => x.secId === sec.id).forEach(x => sec.tasks.push(x.task));
+      // Remove deleted tasks
+      sec.tasks = sec.tasks.filter(t => !removed[t.id]);
+      // Apply text/tag edits to base tasks
+      sec.tasks = sec.tasks.map(t => edited[t.id] ? { ...t, ...edited[t.id] } : t);
+      // Apply custom ordering if it exists
+      if (orders[sec.id]) {
+        const orderMap = {};
+        orders[sec.id].forEach((id, i) => { orderMap[id] = i; });
+        sec.tasks = [...sec.tasks].sort((a, b) => {
+          const ai = orderMap[a.id] ?? 999;
+          const bi = orderMap[b.id] ?? 999;
+          return ai - bi;
+        });
+      }
+    });
+  }
+
+  // ── Save ────────────────────────────────────────────
+  function scheduleSave() {
+    setConn("syncing", "Saving…");
+    clearTimeout(syncDebounce);
+    syncDebounce = setTimeout(syncToCloud, 0);
+  }
+
+  async function save() {
+    clearTimeout(syncDebounce);
+    await syncToCloud();
+  }
+
+  async function syncToCloud() {
+    if (!db) { setConn("offline","No database connection"); return; }
+    if (isSaving) { saveQueued = true; return; }
+    isSaving = true;
+    lastSaveTs = Date.now(); // stamp NOW — echo window starts immediately, not on confirm
+
+    const row       = buildRow();
+    const MAX_RETRY = 3;
+
+    for (let attempt = 1; attempt <= MAX_RETRY; attempt++) {
+      const { error } = await db
+        .from("sheet")
+        .update(row)
+        .eq("id", "main");
+
+      if (!error) {
+        cacheLocally(rowToRecord(row));
+        lastSaveTs = Date.now();
+        setConn("live", "Live · synced");
+        $("lastSync").textContent = "synced " + fmtTime(Date.now());
+        break;
+      }
+
+      console.warn(`Save attempt ${attempt} failed:`, error.message);
+      if (attempt < MAX_RETRY) {
+        await new Promise(res => setTimeout(res, 600 * attempt));
+      } else {
+        setConn("offline", "Save failed — will retry");
+        setTimeout(syncToCloud, 10000);
+      }
+    }
+
+    isSaving = false;
+    if (saveQueued) {
+      saveQueued = false; syncToCloud();
+    } else if (pendingRemoteUpdate) {
+      const upd = pendingRemoteUpdate; pendingRemoteUpdate = null;
+      applyRemoteUpdate(upd);
+    }
+  }
+
+  // ── Load ────────────────────────────────────────────
+  async function load(force=false) {
+    if (!db) { setConn("offline","No database connection"); return; }
+    setConn("syncing", "Loading");
+    const { data, error } = await db
+      .from("sheet")
+      .select("*")
+      .eq("id", "main")
+      .single();
+
+    if (error) {
+      console.error("Load failed:", error.message);
+      const cached = readLocalCache();
+      if (cached) { applyRecord(cached); render(); setConn("offline", "Offline — showing cached data"); }
+      else         { setConn("offline", "Offline"); }
+      return;
+    }
+
+    const rec = rowToRecord(data);
+    applyRecord(rec);
+    cacheLocally(rec);
+    setConn("live", "Live · synced");
+    $("lastSync").textContent = "synced " + fmtTime(Date.now());
+    render();
+  }
+
+  // ── Realtime subscription ───────────────────────────
+  // Supabase pushes changes to all clients instantly via WebSocket.
+  // No polling needed for live updates.
+  db.channel("sheet-live")
+    .on(
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "sheet", filter: "id=eq.main" },
+      payload => {
+        const incoming = rowToRecord(payload.new);
+        if (isSaving) {
+          // Queue it — apply after our save lands so we don't lose teammate changes
+          pendingRemoteUpdate = incoming;
+          return;
+        }
+        applyRemoteUpdate(incoming);
+      }
+    )
+    .subscribe(status => {
+      if (status === "SUBSCRIBED")    setConn("live",    "Live · connected");
+      if (status === "CLOSED")        setConn("offline", "Disconnected");
+      if (status === "CHANNEL_ERROR") setConn("offline", "Connection error — retrying");
+    });
+
+  // Fallback poll every 30s — skip if in edit mode to avoid wiping the DOM
+  setInterval(() => { if (!document.hidden && !isSaving && !editMode) load(); }, 30000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && !editMode) load(); });
+
+
+  // ── Tab switching ─────────────────────────────────────
+  function switchTab(tab) {
+    currentTab = tab;
+    document.getElementById("page-task").classList.toggle("active", tab === "task");
+    document.getElementById("page-pack").classList.toggle("active", tab === "pack");
+    document.getElementById("page-assembly").classList.toggle("active", tab === "assembly");
+    document.getElementById("tabTask").classList.toggle("active", tab === "task");
+    document.getElementById("tabPack").classList.toggle("active", tab === "pack");
+    document.getElementById("tabAssembly").classList.toggle("active", tab === "assembly");
+    if (tab === "pack")     renderPacking();
+    if (tab === "assembly") renderAssembly();
+  }
+  $("tabTask").addEventListener("click",    () => switchTab("task"));
+  $("tabPack").addEventListener("click",    () => switchTab("pack"));
+  $("tabAssembly").addEventListener("click",() => switchTab("assembly"));
+
+  // ── Packing page render ──────────────────────────────
+  function renderPacking() {
+    const root = $("packContent");
+    root.innerHTML = "";
+
+    // ── Toolbox section with subgroups ──────────────────
+    const allItems   = toolboxGroups.flatMap(g => g.items);
+    const tbDone     = allItems.filter(it => (toolboxStates[it.id]||{}).checked).length;
+    const tbTotal    = allItems.length;
+
+    const tbSec = document.createElement("div");
+    tbSec.className = "pack-section";
+
+    // Section header
+    const tbHead = document.createElement("div");
+    tbHead.className = "pack-sec-head";
+    const tbNumEl = document.createElement("span");
+    tbNumEl.className = "pack-sec-num toolbox";
+    tbNumEl.textContent = "TB";
+    const tbTitleEl = document.createElement("h2");
+    tbTitleEl.className = "pack-sec-title";
+    tbTitleEl.textContent = "Toolbox Checklist";
+    const tbProgEl = document.createElement("span");
+    tbProgEl.className = "pack-progress";
+    tbProgEl.textContent = tbDone + " / " + tbTotal;
+    const resetTbBtn = document.createElement("button");
+    resetTbBtn.className = "btn";
+    resetTbBtn.textContent = "Reset Checks";
+    resetTbBtn.style.cssText = "display:none;font-size:9px;padding:5px 10px;margin-left:8px;";
+    resetTbBtn.addEventListener("click", () => { toolboxStates = {}; renderPacking(); scheduleSave(); });
+    if (editMode) resetTbBtn.style.display = "inline-flex";
+    tbHead.appendChild(tbNumEl);
+    tbHead.appendChild(tbTitleEl);
+    tbHead.appendChild(tbProgEl);
+    tbHead.appendChild(resetTbBtn);
+
+    const uncheckBtn = document.createElement("button");
+    uncheckBtn.className = "btn";
+    uncheckBtn.textContent = "Uncheck All";
+    uncheckBtn.style.cssText = "font-size:9px;padding:5px 10px;";
+    uncheckBtn.addEventListener("click", () => {
+      if (!confirm("Uncheck all toolbox items?")) return;
+      toolboxStates = {};
+      renderPacking(); scheduleSave();
+    });
+    tbHead.appendChild(uncheckBtn);
+    tbSec.appendChild(tbHead);
+
+    // ── Render each group ──
+    toolboxGroups.forEach((group, gIdx) => {
+      const groupDone  = group.items.filter(it => (toolboxStates[it.id]||{}).checked).length;
+      const groupTotal = group.items.length;
+
+      const groupEl = document.createElement("div");
+      groupEl.className = "tb-group";
+
+      // Group header
+      const gh = document.createElement("div");
+      gh.className = "tb-group-header";
+
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "tb-group-name";
+      nameSpan.textContent = group.name;
+
+      const nameInput = document.createElement("input");
+      nameInput.className = "tb-group-name-input";
+      nameInput.type = "text";
+      nameInput.value = group.name;
+      nameInput.addEventListener("change", () => {
+        toolboxGroups[gIdx].name = nameInput.value.trim() || group.name;
+        scheduleSave();
+      });
+      nameInput.addEventListener("click", e => e.stopPropagation());
+
+      const countSpan = document.createElement("span");
+      countSpan.className = "tb-group-count";
+      countSpan.textContent = groupDone + "/" + groupTotal;
+
+      const delBtn = document.createElement("button");
+      delBtn.className = "tb-group-del";
+      delBtn.textContent = "✕";
+      delBtn.title = "Delete group";
+      delBtn.addEventListener("click", () => {
+        if (group.items.length > 0 && !confirm('Delete ' + group.name + ' and all its tools?')) return;
+        group.items.forEach(it => delete toolboxStates[it.id]);
+        toolboxGroups.splice(gIdx, 1);
+        renderPacking(); scheduleSave();
+      });
+
+      gh.appendChild(nameSpan);
+      gh.appendChild(nameInput);
+      gh.appendChild(countSpan);
+      gh.appendChild(delBtn);
+      groupEl.appendChild(gh);
+
+      // Items list
+      const ul = document.createElement("ul");
+      ul.className = "pack-items";
+
+      if (group.items.length === 0) {
+        const empty = document.createElement("li");
+        empty.style.cssText = "padding:6px 4px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-faint);letter-spacing:0.08em;";
+        empty.textContent = editMode ? "No tools — add one below." : "Empty.";
+        ul.appendChild(empty);
+      }
+
+      group.items.forEach((item, iIdx) => {
+        const st = toolboxStates[item.id] || {};
+        const li = document.createElement("li");
+        li.className = "pack-item" + (st.checked ? " checked" : "");
+
+        const chk = document.createElement("div");
+        chk.className = "pack-check";
+        chk.addEventListener("click", () => {
+          if (!ensureOp()) return;
+          const cur = toolboxStates[item.id] || {};
+          toolboxStates[item.id] = cur.checked ? { checked:false } : { checked:true, by:operator };
+          renderPacking(); scheduleSave();
+        });
+
+        const txt = document.createElement("span");
+        txt.className = "pack-item-text";
+        txt.textContent = item.text;
+
+        li.appendChild(chk);
+        li.appendChild(txt);
+
+        if (st.checked && st.by) {
+          const by = document.createElement("span");
+          by.className = "pack-item-by";
+          by.textContent = st.by;
+          li.appendChild(by);
+        }
+
+        const rmBtn = document.createElement("button");
+        rmBtn.className = "pack-remove-btn";
+        rmBtn.textContent = "✕";
+        rmBtn.addEventListener("click", e => {
+          e.stopPropagation();
+          toolboxGroups[gIdx].items.splice(iIdx, 1);
+          delete toolboxStates[item.id];
+          renderPacking(); scheduleSave();
+        });
+        li.appendChild(rmBtn);
+        ul.appendChild(li);
+      });
+      groupEl.appendChild(ul);
+
+      // Add item row for this group
+      const addRow = document.createElement("div");
+      addRow.className = "pack-add-row";
+      const addInput = document.createElement("input");
+      addInput.className = "pack-add-input";
+      addInput.type = "text";
+      addInput.placeholder = "Add tool to " + group.name + "…";
+      const addBtn = document.createElement("button");
+      addBtn.className = "pack-add-btn";
+      addBtn.textContent = "+";
+      const doAdd = () => {
+        if (!ensureOp()) return;
+        const text = addInput.value.trim(); if (!text) return;
+        toolboxGroups[gIdx].items.push({ id:"tb_"+Date.now()+"_"+gIdx, text });
+        renderPacking(); scheduleSave();
+        setTimeout(() => {
+          const inputs = tbSec.querySelectorAll(".pack-add-input");
+          if (inputs[gIdx]) inputs[gIdx].focus();
+        }, 0);
+      };
+      addBtn.addEventListener("click", doAdd);
+      addInput.addEventListener("keydown", e => { if (e.key === "Enter") doAdd(); });
+      addRow.appendChild(addInput);
+      addRow.appendChild(addBtn);
+      groupEl.appendChild(addRow);
+
+      tbSec.appendChild(groupEl);
+    });
+
+    // Add new group row
+    const addGroupRow = document.createElement("div");
+    addGroupRow.className = "tb-add-group-row";
+    const addGroupInput = document.createElement("input");
+    addGroupInput.className = "pack-add-input";
+    addGroupInput.type = "text";
+    addGroupInput.placeholder = "New group name…";
+    addGroupInput.style.maxWidth = "240px";
+    const addGroupBtn = document.createElement("button");
+    addGroupBtn.className = "pack-add-btn";
+    addGroupBtn.textContent = "+";
+    const doAddGroup = () => {
+      if (!ensureOp()) return;
+      const name = addGroupInput.value.trim(); if (!name) return;
+      toolboxGroups.push({ id:"tg_"+Date.now(), name, items:[] });
+      renderPacking(); scheduleSave();
+    };
+    addGroupBtn.addEventListener("click", doAddGroup);
+    addGroupInput.addEventListener("keydown", e => { if (e.key === "Enter") doAddGroup(); });
+    addGroupRow.appendChild(addGroupInput);
+    addGroupRow.appendChild(addGroupBtn);
+    tbSec.appendChild(addGroupRow);
+    root.appendChild(tbSec);
+
+  }
+
+
+  // ── Assembly instructions render ─────────────────────
+  function renderAssembly() {
+    const root = $("assemblyContent");
+    root.innerHTML = "";
+
+    // Update print meta
+    const pm = $("printMeta");
+    if (pm) pm.textContent = ($("fieldDate") ? $("fieldDate").value : "") + " · " + ($("fieldLabel") ? $("fieldLabel").value : "");
+
+    // Top toolbar — print button + reset checks
+    const toolbar = document.createElement("div");
+    toolbar.style.cssText = "display:flex;align-items:center;gap:10px;padding:14px 36px;border-bottom:1px solid var(--rule);background:var(--surface-2);flex-wrap:wrap;";
+
+    const checkedCount = assemblySections.flatMap(s => s.steps).filter(st => (assemblyStates[st.id]||{}).checked).length;
+    const totalSteps   = assemblySections.flatMap(s => s.steps).length;
+    const progressEl   = document.createElement("span");
+    progressEl.style.cssText = "font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-faint);";
+    progressEl.textContent   = checkedCount + " / " + totalSteps + " steps";
+    toolbar.appendChild(progressEl);
+
+    const resetBtn = document.createElement("button");
+    resetBtn.className = "asm-print-btn";
+    resetBtn.textContent = "Reset Checks";
+    resetBtn.style.cssText = "margin-left:0;";
+    resetBtn.addEventListener("click", () => {
+      if (!confirm("Clear all step checkboxes?")) return;
+      assemblyStates = {};
+      markLocalChange(); renderAssembly(); scheduleSave();
+    });
+    toolbar.appendChild(resetBtn);
+
+    const printBtn = document.createElement("button");
+    printBtn.className = "asm-print-btn";
+    printBtn.textContent = "⎙ Print";
+    printBtn.addEventListener("click", () => {
+      // Switch to assembly tab if not already there, then print
+      switchTab("assembly");
+      setTimeout(() => window.print(), 100);
+    });
+    toolbar.appendChild(printBtn);
+    root.appendChild(toolbar);
+
+    // Sections
+    assemblySections.forEach((sec, sIdx) => {
+      const secEl = document.createElement("div");
+      secEl.className = "asm-section";
+
+      // Section header
+      const head = document.createElement("div");
+      head.className = "asm-sec-head";
+
+      const num = document.createElement("span");
+      num.className = "asm-sec-num";
+      num.textContent = String(sIdx + 1).padStart(2, "0");
+
+      const nameSpan = document.createElement("h2");
+      nameSpan.className = "asm-sec-name";
+      nameSpan.textContent = sec.name;
+
+      const nameInput = document.createElement("input");
+      nameInput.className = "asm-sec-name-input";
+      nameInput.type = "text";
+      nameInput.value = sec.name;
+      nameInput.addEventListener("change", () => {
+        assemblySections[sIdx].name = nameInput.value.trim() || sec.name;
+        markLocalChange(); scheduleSave();
+      });
+      nameInput.addEventListener("click", e => e.stopPropagation());
+
+      const delBtn = document.createElement("button");
+      delBtn.className = "asm-sec-del";
+      delBtn.textContent = "✕";
+      delBtn.title = "Delete section";
+      delBtn.addEventListener("click", () => {
+        if (sec.steps.length > 0 && !confirm("Delete " + sec.name + " and all its steps?")) return;
+        assemblySections.splice(sIdx, 1);
+        markLocalChange(); renderAssembly(); scheduleSave();
+      });
+
+      head.appendChild(num);
+      head.appendChild(nameSpan);
+      head.appendChild(nameInput);
+      head.appendChild(delBtn);
+      secEl.appendChild(head);
+
+      // Steps list
+      const ol = document.createElement("ol");
+      ol.className = "asm-steps";
+
+      if (sec.steps.length === 0) {
+        const empty = document.createElement("li");
+        empty.style.cssText = "padding:8px 4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-faint);letter-spacing:0.08em;";
+        empty.textContent = editMode ? "No steps yet — add one below." : "No steps added yet.";
+        ol.appendChild(empty);
+      }
+
+      sec.steps.forEach((step, stIdx) => {
+        const st = assemblyStates[step.id] || {};
+        const li = document.createElement("li");
+        li.className = "asm-step" + (st.checked ? " checked" : "");
+
+        const stepNum = document.createElement("span");
+        stepNum.className = "asm-step-num";
+        stepNum.textContent = (stIdx + 1) + ".";
+
+        // Checkbox (always visible)
+        const chk = document.createElement("div");
+        chk.className = "asm-step-check";
+        chk.addEventListener("click", e => {
+          e.stopPropagation();
+          if (!ensureOp()) return;
+          assemblyStates[step.id] = st.checked
+            ? { checked: false }
+            : { checked: true, by: operator };
+          markLocalChange(); renderAssembly(); scheduleSave();
+        });
+
+        // Body wrapper (text + warning)
+        const body = document.createElement("div");
+        body.className = "asm-step-body";
+
+        const textEl = document.createElement("span");
+        textEl.className = "asm-step-text";
+        textEl.textContent = step.text;
+
+        const textInput = document.createElement("textarea");
+        textInput.className = "asm-step-input";
+        textInput.value = step.text;
+        textInput.rows = 1;
+        // Auto-expand to show full content immediately
+        setTimeout(() => {
+          textInput.style.height = "auto";
+          textInput.style.height = textInput.scrollHeight + "px";
+        }, 0);
+        textInput.addEventListener("input", () => {
+          textInput.style.height = "auto";
+          textInput.style.height = textInput.scrollHeight + "px";
+          assemblySections[sIdx].steps[stIdx].text = textInput.value;
+          markLocalChange(); scheduleSave();
+        });
+        textInput.addEventListener("click", e => e.stopPropagation());
+
+        body.appendChild(textEl);
+        body.appendChild(textInput);
+
+        // Warning (show if exists, always show input in edit mode)
+        if (step.warning) {
+          const warnEl = document.createElement("div");
+          warnEl.className = "asm-step-warning";
+          warnEl.textContent = step.warning;
+          body.appendChild(warnEl);
+        }
+        const warnInput = document.createElement("textarea");
+        warnInput.className = "asm-warning-input";
+        warnInput.value = step.warning || "";
+        warnInput.rows = 1;
+        warnInput.placeholder = "⚠ Add warning (optional)…";
+        warnInput.addEventListener("input", () => {
+          warnInput.style.height = "auto";
+          warnInput.style.height = warnInput.scrollHeight + "px";
+          assemblySections[sIdx].steps[stIdx].warning = warnInput.value;
+          markLocalChange(); scheduleSave();
+        });
+        warnInput.addEventListener("click", e => e.stopPropagation());
+        body.appendChild(warnInput);
+
+        // Move + delete buttons
+        const actions = document.createElement("div");
+        actions.className = "asm-step-actions";
+
+        const upBtn = document.createElement("button");
+        upBtn.className = "asm-move-btn";
+        upBtn.textContent = "▲";
+        upBtn.disabled = stIdx === 0;
+        upBtn.addEventListener("click", e => {
+          e.stopPropagation();
+          const steps = assemblySections[sIdx].steps;
+          [steps[stIdx - 1], steps[stIdx]] = [steps[stIdx], steps[stIdx - 1]];
+          markLocalChange(); renderAssembly(); scheduleSave();
+        });
+
+        const dnBtn = document.createElement("button");
+        dnBtn.className = "asm-move-btn";
+        dnBtn.textContent = "▼";
+        dnBtn.disabled = stIdx === sec.steps.length - 1;
+        dnBtn.addEventListener("click", e => {
+          e.stopPropagation();
+          const steps = assemblySections[sIdx].steps;
+          [steps[stIdx], steps[stIdx + 1]] = [steps[stIdx + 1], steps[stIdx]];
+          markLocalChange(); renderAssembly(); scheduleSave();
+        });
+
+        const delStep = document.createElement("button");
+        delStep.className = "asm-del-btn";
+        delStep.textContent = "✕";
+        delStep.addEventListener("click", e => {
+          e.stopPropagation();
+          assemblySections[sIdx].steps.splice(stIdx, 1);
+          delete assemblyStates[step.id];
+          markLocalChange(); renderAssembly(); scheduleSave();
+        });
+
+        actions.appendChild(upBtn);
+        actions.appendChild(dnBtn);
+
+        li.appendChild(chk);
+        li.appendChild(stepNum);
+        li.appendChild(body);
+        li.appendChild(actions);
+        li.appendChild(delStep);
+        ol.appendChild(li);
+      });
+      secEl.appendChild(ol);
+
+      // Add step row
+      const addRow = document.createElement("div");
+      addRow.className = "pack-add-row";
+      const addInput = document.createElement("input");
+      addInput.className = "pack-add-input";
+      addInput.type = "text";
+      addInput.placeholder = "Add step to " + sec.name + "…";
+      const addBtn = document.createElement("button");
+      addBtn.className = "pack-add-btn";
+      addBtn.textContent = "+";
+      const doAddStep = () => {
+        if (!ensureOp()) return;
+        const text = addInput.value.trim(); if (!text) return;
+        assemblySections[sIdx].steps.push({ id: "st_" + Date.now(), text, warning: "" });
+        addInput.value = "";
+        markLocalChange(); renderAssembly(); scheduleSave();
+        setTimeout(() => {
+          const inputs = root.querySelectorAll(".pack-add-input");
+          if (inputs[sIdx]) inputs[sIdx].focus();
+        }, 0);
+      };
+      addBtn.addEventListener("click", doAddStep);
+      addInput.addEventListener("keydown", e => { if (e.key === "Enter") doAddStep(); });
+      addRow.appendChild(addInput);
+      addRow.appendChild(addBtn);
+      secEl.appendChild(addRow);
+      root.appendChild(secEl);
+    });
+
+    // Add new section row
+    const addSecRow = document.createElement("div");
+    addSecRow.className = "asm-add-section-row";
+    const addSecInput = document.createElement("input");
+    addSecInput.className = "pack-add-input";
+    addSecInput.type = "text";
+    addSecInput.placeholder = "New section name…";
+    addSecInput.style.maxWidth = "240px";
+    const addSecBtn = document.createElement("button");
+    addSecBtn.className = "pack-add-btn";
+    addSecBtn.textContent = "+";
+    const doAddSec = () => {
+      if (!ensureOp()) return;
+      const name = addSecInput.value.trim(); if (!name) return;
+      assemblySections.push({ id: "as_" + Date.now(), name, steps: [] });
+      addSecInput.value = "";
+      markLocalChange(); renderAssembly(); scheduleSave();
+    };
+    addSecBtn.addEventListener("click", doAddSec);
+    addSecInput.addEventListener("keydown", e => { if (e.key === "Enter") doAddSec(); });
+    addSecRow.appendChild(addSecInput);
+    addSecRow.appendChild(addSecBtn);
+    root.appendChild(addSecRow);
+  }
+
+  // ── Name picker ────────────────────────────────────
+  TEAM.forEach(name => {
+    const btn=document.createElement("button");
+    btn.className="name-btn"; btn.textContent=name;
+    btn.addEventListener("click",()=>selectOp(name));
+    $("nameGrid").appendChild(btn);
+  });
+
+  function selectOp(name) {
+    operator=name;
+    localStorage.setItem("maris_operator",name);
+    $("metaOperator").textContent=name;
+    $("footerName").textContent=name;
+    const b=$("modalBackdrop");
+    b.style.opacity="0"; setTimeout(()=>b.classList.add("hidden"),250);
+    render();
+  }
+  function showModal() {
+    const b = $("modalBackdrop");
+    b.style.transition = "none";
+    b.style.opacity = "0";
+    b.classList.remove("hidden");
+    // Highlight previously chosen name with CSS class
+    $("nameGrid").querySelectorAll(".name-btn").forEach(btn => {
+      btn.classList.toggle("selected", btn.textContent.trim() === operator);
+    });
+    requestAnimationFrame(() => {
+      b.style.transition = "opacity 0.25s ease";
+      b.style.opacity = "1";
+    });
+  }
+
+  $("switchUserBtn").addEventListener("click", showModal);
+
+  // Only show modal if no name saved — [ switch ] button handles changing later
+  $("footerName").textContent = operator || "—";
+  if (!operator) showModal();
+
+  // ── Theme toggle ────────────────────────────────────
+  let isLight = localStorage.getItem("maris_theme") === "light";
+  function applyTheme() {
+    document.body.classList.toggle("light", isLight);
+    $("themeBtn").innerHTML = isLight
+      ? '<span class="theme-icon">☾</span><span id="themeBtnLabel">Dark</span>'
+      : '<span class="theme-icon">☀</span><span id="themeBtnLabel">Light</span>';
+  }
+  applyTheme();
+  $("themeBtn").addEventListener("click", () => {
+    isLight = !isLight;
+    localStorage.setItem("maris_theme", isLight ? "light" : "dark");
+    applyTheme();
+  });
+  $("resetBtn").addEventListener("click",async()=>{
+    if(!confirm("Reset all task states for everyone? (Task list and sheet info are kept)")) return;
+    taskStates={}; render(); await save();
+  });
+
+  // Init — fields readonly until edit mode
+  $("fieldDate").setAttribute("readonly","");
+  $("fieldLabel").setAttribute("readonly","");
+
+  // On startup: show local state instantly while cloud loads in background
+  // Always load from cloud on startup — never show stale local state first
+  load();
+
+</script>
+</body>
+</html>
