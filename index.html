@@ -131,8 +131,9 @@
     width:100%; height:auto; max-height:80vh;
     display:block; background:#000;
   }
-  /* Before metadata loads: lock to 16:9 box and make the poster cover it */
-  .video-frame.loading { aspect-ratio:16/9; }
+  /* Before metadata loads: use the aspect-ratio set inline (matching the thumbnail),
+     fallback to 16/9 if not specified */
+  .video-frame.loading { aspect-ratio: var(--video-ratio, 16/9); }
   .video-frame.loading video { height:100%; object-fit:cover; }
 
   .play-overlay {
@@ -334,8 +335,8 @@
 
   <section class="video-section">
     <div class="video-wrap">
-      <div class="video-frame loading">
-        <video id="marisVideo" playsinline webkit-playsinline preload="metadata" poster="maris_glider.png">
+      <div class="video-frame loading" style="--video-ratio: 4/5;">
+        <video id="marisVideo" playsinline webkit-playsinline preload="metadata" poster="maris_video_thumb.jpg">
           <source src="maris_demo.mp4" type="video/mp4" />
           Your browser does not support the video tag.
         </video>
