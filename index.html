@@ -235,11 +235,22 @@
   .highlight-card {
     border:1px solid var(--rule);
     background:var(--surface);
-    padding:28px;
+    padding:0;
     position:relative;
+    overflow:hidden;
     transition:border-color 0.2s ease, transform 0.2s ease;
   }
   .highlight-card:hover { border-color:var(--cyan-dim); transform:translateY(-2px); }
+  .highlight-media {
+    width:100%; aspect-ratio:16/10;
+    background:#000;
+    display:block; overflow:hidden;
+    border-bottom:1px solid var(--rule);
+  }
+  .highlight-media img {
+    width:100%; height:100%; object-fit:cover; display:block;
+  }
+  .highlight-body { padding:24px; }
   .highlight-icon {
     width:40px; height:40px;
     border:1px solid var(--cyan-dim);
@@ -303,7 +314,7 @@
 
     .highlights-section { padding-bottom:60px; }
     .highlights-grid { gap:12px; }
-    .highlight-card { padding:20px; }
+    .highlight-body { padding:18px; }
     .highlight-icon { width:34px; height:34px; font-size:14px; margin-bottom:14px; }
     .highlight-title { font-size:14px; }
     .highlight-desc { font-size:13px; }
@@ -402,24 +413,36 @@
     </div>
     <div class="highlights-grid">
       <div class="highlight-card">
-        <div class="highlight-icon">↕</div>
-        <div class="highlight-title">Variable Buoyancy</div>
-        <div class="highlight-desc">A custom-engineered VBD system shifts internal volume to drive vertical motion through the water column without propulsion.</div>
+        <div class="highlight-media"><img src="vbd_actuation.gif" alt="VBD actuation demonstration" loading="lazy" /></div>
+        <div class="highlight-body">
+          <div class="highlight-icon">↕</div>
+          <div class="highlight-title">Variable Buoyancy</div>
+          <div class="highlight-desc">A custom-engineered VBD system shifts internal volume to drive vertical motion through the water column without propulsion.</div>
+        </div>
       </div>
       <div class="highlight-card">
-        <div class="highlight-icon">⚙</div>
-        <div class="highlight-title">Custom Electronics</div>
-        <div class="highlight-desc">Bespoke PCB design for the pitch &amp; roll control board, with onboard fault diagnostics and isolated power domains.</div>
+        <div class="highlight-media"><img src="electronics.png" alt="Custom PCB electronics" loading="lazy" /></div>
+        <div class="highlight-body">
+          <div class="highlight-icon">⚙</div>
+          <div class="highlight-title">Custom Electronics</div>
+          <div class="highlight-desc">Bespoke PCB design for the pitch &amp; roll control board, with onboard fault diagnostics and isolated power domains.</div>
+        </div>
       </div>
       <div class="highlight-card">
-        <div class="highlight-icon">⬡</div>
-        <div class="highlight-title">Waterjet Skeleton</div>
-        <div class="highlight-desc">Modular internal frame designed for rapid assembly, easy access, and structural rigidity under hydrostatic load.</div>
+        <div class="highlight-media"><img src="skeleton.png" alt="Glider skeleton frame" loading="lazy" /></div>
+        <div class="highlight-body">
+          <div class="highlight-icon">⬡</div>
+          <div class="highlight-title">Waterjet Skeleton</div>
+          <div class="highlight-desc">Modular internal frame designed for rapid assembly, easy access, and structural rigidity under hydrostatic load.</div>
+        </div>
       </div>
       <div class="highlight-card">
-        <div class="highlight-icon">◎</div>
-        <div class="highlight-title">Real-Time Telemetry</div>
-        <div class="highlight-desc">Live operations dashboard for the build and test team — task tracking, assembly instructions, and packing checklists.</div>
+        <div class="highlight-media"><img src="telemetry_video.gif" alt="Live telemetry monitoring interface" loading="lazy" /></div>
+        <div class="highlight-body">
+          <div class="highlight-icon">◎</div>
+          <div class="highlight-title">Real-Time Telemetry</div>
+          <div class="highlight-desc">A friendly live monitoring interface displaying real-time sensor data, GPS location, depth, and orientation — giving the team full visibility of the glider during operation.</div>
+        </div>
       </div>
     </div>
   </section>
